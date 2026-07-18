@@ -1,0 +1,673 @@
+/* Design System & Custom Style Rules */
+:root {
+  --bg-primary: #0b0f19;
+  --bg-gradient: linear-gradient(135deg, #0b0f19 0%, #111827 50%, #0d1b2a 100%);
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-bg-hover: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-focus: rgba(99, 102, 241, 0.4);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-shadow-inset: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+
+  --color-primary: #6366f1;
+  /* Indigo */
+  --color-primary-hover: #4f46e5;
+  --color-secondary: #06b6d4;
+  /* Cyan */
+  --color-success: #10b981;
+  /* Green */
+  --color-danger: #f43f5e;
+  /* Rose */
+  --color-warning: #f59e0b;
+  /* Amber */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  --font-sans: 'Inter', 'Noto Sans Gujarati', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+
+  --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-bounce: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glassmorphism Containers */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-shadow-inset);
+  border-radius: var(--radius-lg);
+  transition: var(--transition-smooth);
+}
+
+.glass-panel-hover:hover {
+  background: var(--glass-bg-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: var(--transition-smooth);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Interactive Elements */
+.glass-input {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-primary);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  outline: none;
+  transition: var(--transition-smooth);
+  width: 100%;
+}
+
+.glass-input:focus {
+  border-color: var(--glass-border-focus);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #4f46e5 100%);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+  transition: var(--transition-bounce);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  justify-content: center;
+}
+
+.btn-primary:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-primary);
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--color-danger) 0%, #e11d48 100%);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.4);
+  transition: var(--transition-bounce);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-danger:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.6);
+}
+
+/* Animations */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .4;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+/* --- Loader styles --- */
+
+/* 1. Spinner Loader (Apple iOS style) */
+.ios-spinner {
+  display: inline-block;
+  position: relative;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+.ios-spinner div {
+  position: absolute;
+  width: 2px;
+  height: 6px;
+  background: var(--color-text-primary);
+  border-radius: 1px;
+  left: 11px;
+  top: 9px;
+  transform-origin: 1px 3px;
+}
+
+/* Create the segments of the iOS spinner wheel */
+.ios-spinner div:nth-child(1) {
+  transform: rotate(0deg) translate(0, -6px);
+  opacity: 1;
+}
+
+.ios-spinner div:nth-child(2) {
+  transform: rotate(30deg) translate(0, -6px);
+  opacity: 0.91;
+}
+
+.ios-spinner div:nth-child(3) {
+  transform: rotate(60deg) translate(0, -6px);
+  opacity: 0.83;
+}
+
+.ios-spinner div:nth-child(4) {
+  transform: rotate(90deg) translate(0, -6px);
+  opacity: 0.75;
+}
+
+.ios-spinner div:nth-child(5) {
+  transform: rotate(120deg) translate(0, -6px);
+  opacity: 0.66;
+}
+
+.ios-spinner div:nth-child(6) {
+  transform: rotate(150deg) translate(0, -6px);
+  opacity: 0.58;
+}
+
+.ios-spinner div:nth-child(7) {
+  transform: rotate(180deg) translate(0, -6px);
+  opacity: 0.5;
+}
+
+.ios-spinner div:nth-child(8) {
+  transform: rotate(210deg) translate(0, -6px);
+  opacity: 0.41;
+}
+
+.ios-spinner div:nth-child(9) {
+  transform: rotate(240deg) translate(0, -6px);
+  opacity: 0.33;
+}
+
+.ios-spinner div:nth-child(10) {
+  transform: rotate(270deg) translate(0, -6px);
+  opacity: 0.25;
+}
+
+.ios-spinner div:nth-child(11) {
+  transform: rotate(300deg) translate(0, -6px);
+  opacity: 0.16;
+}
+
+.ios-spinner div:nth-child(12) {
+  transform: rotate(330deg) translate(0, -6px);
+  opacity: 0.08;
+}
+
+/* 2. Linear Progress Indicator */
+.linear-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.linear-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  width: 40%;
+  border-radius: var(--radius-full);
+  position: absolute;
+  animation: slide 1.5s infinite ease-in-out;
+}
+
+/* 3. Determinate Loader */
+.determinate-progress {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.determinate-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  transition: width 0.3s ease;
+}
+
+/* 4. Skeleton Loader & Shimmer Effect */
+.skeleton {
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.03) 25%,
+      rgba(255, 255, 255, 0.09) 50%,
+      rgba(255, 255, 255, 0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  width: 100%;
+}
+
+.skeleton-text {
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.skeleton-title {
+  height: 24px;
+  margin-bottom: 12px;
+  width: 60%;
+}
+
+.skeleton-avatar {
+  height: 48px;
+  width: 48px;
+  border-radius: 50%;
+}
+
+/* 5. Circular Progress Indicator (SVG based) */
+.circular-progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.circular-progress-svg {
+  transform: rotate(-90deg);
+}
+
+.circular-progress-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.05);
+}
+
+.circular-progress-fill {
+  fill: none;
+  stroke: url(#progress-gradient);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.circular-progress-text {
+  position: absolute;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 6. Shimmer Loading Card Container overlay */
+.shimmer-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-overlay::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.05) 20%,
+      rgba(255, 255, 255, 0.1) 60%,
+      rgba(255, 255, 255, 0) 100%);
+  animation: slide 2s infinite;
+}
+
+/* Layout and App structures */
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: 80px;
+  /* Space for mobile nav if needed */
+}
+
+@media (min-width: 768px) {
+  .app-container {
+    padding: 32px;
+  }
+}
+
+/* Apple Grid Layouts */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+/* Header & Tabs styled like iOS Segmented Control */
+.segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  gap: 2px;
+}
+
+.segmented-button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 10px 16px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  text-align: center;
+}
+
+.segmented-button.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.segmented-button:hover:not(.active) {
+  color: var(--color-text-primary);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive layouts for mobile friendliness */
+.attendance-main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .attendance-main-grid {
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+  }
+}
+
+.reports-main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .reports-main-grid {
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+  }
+}
+
+.stats-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .stats-cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Apple smooth transit animation for re-ordered elements */
+.glass-card {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+
+/* Visibility classes for mobile vs desktop */
+.mobile-only {
+  display: block;
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* Printable Document CSS */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+  }
+
+  .app-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* Hide regular app shell components */
+  .app-container>*:not(.print-container) {
+    display: none !important;
+  }
+
+  #root>*:not(.app-container) {
+    display: none !important;
+  }
+
+  .print-container {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    color: #000000 !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 15px !important;
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    color: #000000 !important;
+    border-bottom: 2px solid #000000 !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+    padding: 8px !important;
+  }
+
+  td {
+    border-bottom: 1px solid #e5e7eb !important;
+    padding: 8px !important;
+  }
+
+  h3 {
+    margin-top: 24px !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid #000000 !important;
+    padding-bottom: 4px !important;
+    page-break-after: avoid !important;
+  }
+}
+
+.print-container {
+  display: none;
+}
