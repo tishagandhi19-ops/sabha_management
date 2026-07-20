@@ -1293,15 +1293,28 @@ function AppContent() {
     );
   }
 
-  // Role-aware primary navigation (UI only — tabs map to existing panels)
-  // Sabha admin (superadmin) manages sabha sections; seva module is exclusive to seva_admin.
-  const NAV_ITEMS = [
-    { key: 'attendance', label: 'હાજરી', icon: UserCheck, roles: ['superadmin'] },
-    { key: 'members', label: 'સભ્યો', icon: Users, roles: ['superadmin'] },
-    { key: 'reports', label: 'રીપોર્ટ્સ', icon: TrendingUp, roles: ['superadmin'] },
-    { key: 'seva', label: 'સેવા', icon: Heart, roles: ['seva_admin'] }
+  // Role-aware primary navigation
+  // Both superadmin and seva_admin get clean primary navigation items (Attendance, Members, Reports)
+  const isSevaUser = user?.role === 'seva_admin';
+
+  const visibleNavItems = [
+    { key: 'attendance', label: 'હાજરી', icon: UserCheck },
+    { key: 'members', label: 'સભ્યો', icon: Users },
+    { key: 'reports', label: 'રીપોર્ટ્સ', icon: TrendingUp }
   ];
-  const visibleNavItems = NAV_ITEMS.filter(item => !user || item.roles.includes(user.role));
+
+  const currentTabKey = isSevaUser ? sevaModuleTab : activeTab;
+
+  const handleTabClick = (key) => {
+    if (isSevaUser) {
+      setSevaModuleTab(key);
+      if (key === 'reports') {
+        fetchSevaReports();
+      }
+    } else {
+      setActiveTab(key);
+    }
+  };
 
   return (
     <div className="app-container">
@@ -1347,9 +1360,9 @@ function AppContent() {
             {visibleNavItems.map(item => (
               <button
                 key={item.key}
-                className={`main-nav-item ${activeTab === item.key ? 'active' : ''}`}
-                onClick={() => setActiveTab(item.key)}
-                aria-current={activeTab === item.key ? 'page' : undefined}
+                className={`main-nav-item ${currentTabKey === item.key ? 'active' : ''}`}
+                onClick={() => handleTabClick(item.key)}
+                aria-current={currentTabKey === item.key ? 'page' : undefined}
               >
                 <item.icon size={16} /> {item.label}
               </button>
@@ -1968,7 +1981,7 @@ function AppContent() {
           {reportsSubTab === 'profile' && (
             <div className="reports-main-grid">
               {/* Search list of members */}
-              <div className="glass-panel" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="glass-panel" id="sabha-member-report-search" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>સભ્ય પ્રોગ્રેસ રીપોર્ટ</h3>
                 <div className="search-field">
                   <Search className="search-icon" size={16} />
@@ -1990,7 +2003,14 @@ function AppContent() {
                       return (
                         <div
                           key={member._id}
-                          onClick={() => loadMemberReport(member._id)}
+                          onClick={() => {
+                            loadMemberReport(member._id);
+                            if (window.innerWidth < 768) {
+                              setTimeout(() => {
+                                document.getElementById('sabha-member-report-detail')?.scrollIntoView({ behavior: 'smooth' });
+                              }, 150);
+                            }
+                          }}
                           className="glass-card"
                           style={{
                             cursor: 'pointer',
@@ -2010,17 +2030,24 @@ function AppContent() {
               </div>
 
               {/* Detailed profile visualization */}
-              <div className="glass-panel" style={{ padding: 24 }}>
+              <div className="glass-panel" id="sabha-member-report-detail" style={{ padding: 24 }}>
                 {loadingMemberReport ? (
                   <SkeletonText rows={6} />
                 ) : selectedMemberReport ? (
                   <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                      <div>
+                    <button
+                      className="btn-secondary btn-sm mobile-only"
+                      style={{ alignSelf: 'flex-start' }}
+                      onClick={() => document.getElementById('sabha-member-report-search')?.scrollIntoView({ behavior: 'smooth' })}
+                    >
+                      ← સભ્ય યાદી જુઓ
+                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+                      <div style={{ minWidth: 200 }}>
                         <span className="badge badge-primary">
                           {CATEGORY_LABELS[selectedMemberReport.member.type]}
                         </span>
-                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6, letterSpacing: '-0.01em' }}>{selectedMemberReport.member.name}</h2>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6, letterSpacing: '-0.01em', wordBreak: 'break-word' }}>{selectedMemberReport.member.name}</h2>
                         <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                           યુનિક આઈડી કોડ: {selectedMemberReport.member.uniqueCode}
                         </p>
@@ -2033,19 +2060,19 @@ function AppContent() {
                     <div className="stats-cards-grid" style={{ textAlign: 'center' }}>
                       <div className="glass-card">
                         <h5 style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>હાજર સભા</h5>
-                        <p style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 4, color: 'var(--color-success)' }}>
+                        <p style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: 4, color: 'var(--color-success)' }}>
                           {selectedMemberReport.stats.present} / {selectedMemberReport.stats.totalEvents}
                         </p>
                       </div>
                       <div className="glass-card">
                         <h5 style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>ગેરહાજર સભા</h5>
-                        <p style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 4, color: 'var(--color-danger)' }}>
+                        <p style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: 4, color: 'var(--color-danger)' }}>
                           {selectedMemberReport.stats.absent}
                         </p>
                       </div>
                       <div className="glass-card">
                         <h5 style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>મોડા આવ્યા</h5>
-                        <p style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 4, color: 'var(--color-warning)' }}>
+                        <p style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: 4, color: 'var(--color-warning)' }}>
                           {selectedMemberReport.stats.late}
                         </p>
                       </div>
@@ -2097,7 +2124,7 @@ function AppContent() {
                               );
                             })}
                           </div>
-                          <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--color-success)' }} /> હાજર
                             </span>
@@ -2121,11 +2148,11 @@ function AppContent() {
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '180px', overflowY: 'auto' }}>
                           {selectedMemberReport.remarks.map((rem, idx) => (
-                            <div key={idx} className="glass-card" style={{ padding: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div key={idx} className="glass-card" style={{ padding: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                               <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
                                 {new Date(rem.date).toLocaleDateString('gu-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                               </span>
-                              <span style={{ fontSize: '0.85rem', color: 'var(--color-warning)', fontStyle: 'italic' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--color-warning)', fontStyle: 'italic', wordBreak: 'break-word' }}>
                                 &ldquo;{rem.remark}&rdquo;
                               </span>
                             </div>
@@ -2379,8 +2406,8 @@ function AppContent() {
                       <span className="badge badge-warning">મોડા પડનાર: {combinedList.filter(m => m.status === 'present' && m.isLate).length}</span>
                     </div>
 
-                    <div className="table-wrap" style={{ maxHeight: '440px', overflowY: 'auto' }}>
-                      <table>
+                    <div className="table-wrap" style={{ maxHeight: '440px', overflowY: 'auto', width: '100%', maxWidth: '100%' }}>
+                      <table style={{ width: '100%', minWidth: '520px' }}>
                         <thead>
                           <tr>
                             <th>ક્રમ</th>
@@ -3005,7 +3032,7 @@ function AppContent() {
               {sevaReportsSubTab === 'profile' && (
                 <div className="reports-main-grid">
                   {/* Left list of members */}
-                  <div className="glass-panel" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div className="glass-panel" id="seva-member-report-search" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>સભ્ય સેવા અહેવાલ</h3>
                     <div className="search-field">
                       <Search className="search-icon" size={16} />
@@ -3027,7 +3054,14 @@ function AppContent() {
                           return (
                             <div
                               key={member._id}
-                              onClick={() => loadSevaMemberReport(member._id)}
+                              onClick={() => {
+                                loadSevaMemberReport(member._id);
+                                if (window.innerWidth < 768) {
+                                  setTimeout(() => {
+                                    document.getElementById('seva-member-report-detail')?.scrollIntoView({ behavior: 'smooth' });
+                                  }, 150);
+                                }
+                              }}
                               className="glass-card"
                               style={{
                                 cursor: 'pointer',
@@ -3047,17 +3081,24 @@ function AppContent() {
                   </div>
 
                   {/* Right member progress display */}
-                  <div className="glass-panel" style={{ padding: 24 }}>
+                  <div className="glass-panel" id="seva-member-report-detail" style={{ padding: 24 }}>
                     {loadingSevaMemberReport ? (
                       <SkeletonText rows={6} />
                     ) : selectedSevaMemberReport ? (
                       <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                          <div>
+                        <button
+                          className="btn-secondary btn-sm mobile-only"
+                          style={{ alignSelf: 'flex-start' }}
+                          onClick={() => document.getElementById('seva-member-report-search')?.scrollIntoView({ behavior: 'smooth' })}
+                        >
+                          ← સભ્ય યાદી જુઓ
+                        </button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+                          <div style={{ minWidth: 200 }}>
                             <span className="badge badge-primary">
                               {SEVA_CATEGORY_LABELS[selectedSevaMemberReport.member.type]}
                             </span>
-                            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6, letterSpacing: '-0.01em' }}>{selectedSevaMemberReport.member.name}</h2>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6, letterSpacing: '-0.01em', wordBreak: 'break-word' }}>{selectedSevaMemberReport.member.name}</h2>
                             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                               યુનિક આઈડી કોડ: {selectedSevaMemberReport.member.uniqueCode}
                             </p>
@@ -3075,14 +3116,20 @@ function AppContent() {
                         <div className="stats-cards-grid" style={{ textAlign: 'center' }}>
                           <div className="glass-card">
                             <h5 style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>હાજર સેવાઓ</h5>
-                            <p style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 4, color: 'var(--color-success)' }}>
+                            <p style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: 4, color: 'var(--color-success)' }}>
                               {selectedSevaMemberReport.stats.present} / {selectedSevaMemberReport.stats.totalSevas}
                             </p>
                           </div>
                           <div className="glass-card">
                             <h5 style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>ગેરહાજર સભાઓ</h5>
-                            <p style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: 4, color: 'var(--color-danger)' }}>
+                            <p style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: 4, color: 'var(--color-danger)' }}>
                               {selectedSevaMemberReport.stats.absent}
+                            </p>
+                          </div>
+                          <div className="glass-card">
+                            <h5 style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>કુલ કલાક</h5>
+                            <p style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: 4, color: 'var(--color-info)' }}>
+                              {selectedSevaMemberReport.stats.totalHours}
                             </p>
                           </div>
                         </div>
@@ -3093,8 +3140,8 @@ function AppContent() {
                           {selectedSevaMemberReport.history.length === 0 ? (
                             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>આ સભ્યનો કોઈ સેવાનો ઇતિહાસ નોંધાયેલ નથી.</p>
                           ) : (
-                            <div className="table-wrap" style={{ maxHeight: '260px', overflowY: 'auto' }}>
-                              <table>
+                            <div className="table-wrap" style={{ maxHeight: '260px', overflowY: 'auto', width: '100%', maxWidth: '100%' }}>
+                              <table style={{ width: '100%', minWidth: '440px' }}>
                                 <thead>
                                   <tr>
                                     <th>તારીખ</th>
@@ -3295,8 +3342,8 @@ function AppContent() {
                           <span className="badge badge-info">કુલ લોગ થયેલ કલાક: {combinedList.reduce((sum, item) => sum + item.hours, 0)} કલાક</span>
                         </div>
 
-                        <div className="table-wrap" style={{ maxHeight: '440px', overflowY: 'auto' }}>
-                          <table>
+                        <div className="table-wrap" style={{ maxHeight: '440px', overflowY: 'auto', width: '100%', maxWidth: '100%' }}>
+                          <table style={{ width: '100%', minWidth: '480px' }}>
                             <thead>
                               <tr>
                                 <th>ક્રમ</th>
@@ -3928,9 +3975,9 @@ function AppContent() {
           {visibleNavItems.map(item => (
             <button
               key={item.key}
-              className={`bottom-nav-item ${activeTab === item.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.key)}
-              aria-current={activeTab === item.key ? 'page' : undefined}
+              className={`bottom-nav-item ${currentTabKey === item.key ? 'active' : ''}`}
+              onClick={() => handleTabClick(item.key)}
+              aria-current={currentTabKey === item.key ? 'page' : undefined}
             >
               <item.icon size={20} />
               {item.label}

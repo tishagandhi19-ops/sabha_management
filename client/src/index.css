@@ -1292,15 +1292,34 @@ input[type="number"].glass-input {
   }
 }
 
-.stats-cards-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+/* Containment to prevent CSS Grid & flex children from overflowing viewport on mobile */
+.reports-main-grid > *,
+.attendance-main-grid > *,
+.grid-2 > *,
+.grid-3 > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-@media (min-width: 640px) {
+@media (max-width: 640px) {
+  .glass-panel {
+    padding: 16px !important;
+  }
+}
+
+.stats-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
   .stats-cards-grid {
-    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .stats-cards-grid .glass-card {
+    padding: 10px 4px;
   }
 }
 
