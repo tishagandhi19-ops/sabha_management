@@ -1398,7 +1398,7 @@ function AppContent() {
               setEventMinReachTimePeriod('AM');
               setShowEventModal(true);
             }}>
-              <Plus size={18} /> નવી સભા આયોજિત કરો
+              <Plus size={18} /> નવી સભા
             </button>
           </div>
 
@@ -2464,31 +2464,6 @@ function AppContent() {
       {/* --- PANEL 4: SEVA MANAGEMENT --- */}
       {activeTab === 'seva' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {/* Sub Navigation for Seva Module */}
-          <div className="segmented-control" style={{ justifySelf: 'stretch' }}>
-            <button
-              className={`segmented-button ${sevaModuleTab === 'attendance' ? 'active' : ''}`}
-              onClick={() => setSevaModuleTab('attendance')}
-            >
-              સેવા હાજરી પત્રક
-            </button>
-            <button
-              className={`segmented-button ${sevaModuleTab === 'members' ? 'active' : ''}`}
-              onClick={() => setSevaModuleTab('members')}
-            >
-              સેવા સભ્યો સંચાલન
-            </button>
-            <button
-              className={`segmented-button ${sevaModuleTab === 'reports' ? 'active' : ''}`}
-              onClick={() => {
-                setSevaModuleTab('reports');
-                fetchSevaReports();
-              }}
-            >
-              સેવા રીપોર્ટ્સ અને પ્રોગ્રેસ
-            </button>
-          </div>
-
           {/* Module 1: Seva Attendance */}
           {sevaModuleTab === 'attendance' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
