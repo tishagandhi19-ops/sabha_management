@@ -1244,20 +1244,22 @@ function AppContent() {
     // LOGIN SCREEN
     return (
       <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-        <div className="glass-panel animate-fade-in" style={{ padding: '40px 30px', maxWidth: 420, width: '100%', textAlign: 'center' }}>
-          <div style={{ background: 'rgba(99, 102, 241, 0.1)', padding: 16, borderRadius: '50%', display: 'inline-flex', marginBottom: 20 }}>
-            <Users size={32} color="var(--color-primary)" />
-          </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: 8, letterSpacing: '-0.025em' }}>સભા વ્યવસ્થાપન</h2>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 28 }}>સવારની કથા અને રવિસભા હાજરી સોફ્ટવેર (સુપરએડમિન પ્રવેશ)</p>
+        <div className="glass-panel animate-fade-in" style={{ padding: '40px 28px', maxWidth: 420, width: '100%', textAlign: 'center' }}>
+          <span className="brand-mark" style={{ width: 60, height: 60, borderRadius: 18, marginBottom: 20 }}>
+            <Users size={30} />
+          </span>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 700, marginBottom: 8, letterSpacing: '-0.025em' }}>સભા વ્યવસ્થાપન</h2>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 28, lineHeight: 1.6 }}>સવારની કથા અને રવિસભા હાજરી સોફ્ટવેર (સુપરએડમિન પ્રવેશ)</p>
 
           <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18, textAlign: 'left' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>વપરાશકર્તા નામ</label>
+              <label htmlFor="login-username" className="form-label">વપરાશકર્તા નામ</label>
               <input
+                id="login-username"
                 type="text"
                 className="glass-input"
                 placeholder="admin"
+                autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -1265,11 +1267,13 @@ function AppContent() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>પાસવર્ડ</label>
+              <label htmlFor="login-password" className="form-label">પાસવર્ડ</label>
               <input
+                id="login-password"
                 type="password"
                 className="glass-input"
                 placeholder="••••••••"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -1277,7 +1281,7 @@ function AppContent() {
             </div>
 
             {authError && (
-              <p style={{ color: 'var(--color-danger)', fontSize: '0.85rem', textAlign: 'center', margin: '4px 0' }}>{authError}</p>
+              <p role="alert" style={{ color: 'var(--color-danger)', fontSize: '0.85rem', textAlign: 'center', margin: '4px 0' }}>{authError}</p>
             )}
 
             <button type="submit" className="btn-primary" disabled={authLoading} style={{ marginTop: 8 }}>
@@ -1289,53 +1293,69 @@ function AppContent() {
     );
   }
 
+  // Role-aware primary navigation (UI only — tabs map to existing panels)
+  // Sabha admin (superadmin) manages sabha sections; seva module is exclusive to seva_admin.
+  const NAV_ITEMS = [
+    { key: 'attendance', label: 'હાજરી', icon: UserCheck, roles: ['superadmin'] },
+    { key: 'members', label: 'સભ્યો', icon: Users, roles: ['superadmin'] },
+    { key: 'reports', label: 'રીપોર્ટ્સ', icon: TrendingUp, roles: ['superadmin'] },
+    { key: 'seva', label: 'સેવા', icon: Heart, roles: ['seva_admin'] }
+  ];
+  const visibleNavItems = NAV_ITEMS.filter(item => !user || item.roles.includes(user.role));
+
   return (
     <div className="app-container">
       {/* Toast Notification */}
       {notification && (
         <div
-          className="glass-panel"
-          style={{
-            position: 'fixed',
-            top: 24,
-            right: 24,
-            padding: '12px 24px',
-            zIndex: 999,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            borderLeft: `4px solid ${notification.type === 'error' ? 'var(--color-danger)' : notification.type === 'warning' ? 'var(--color-warning)' : 'var(--color-success)'}`,
-            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-            animation: 'fadeIn 0.3s ease'
-          }}
+          role="status"
+          aria-live="polite"
+          className={`toast ${notification.type === 'error' ? 'toast-error' : notification.type === 'warning' ? 'toast-warning' : 'toast-success'}`}
         >
           {notification.type === 'error' ? (
-            <XCircle color="var(--color-danger)" size={20} />
+            <XCircle color="var(--color-danger)" size={20} style={{ flexShrink: 0 }} />
           ) : notification.type === 'warning' ? (
-            <AlertTriangle color="var(--color-warning)" size={20} />
+            <AlertTriangle color="var(--color-warning)" size={20} style={{ flexShrink: 0 }} />
           ) : (
-            <CheckCircle color="var(--color-success)" size={20} />
+            <CheckCircle color="var(--color-success)" size={20} style={{ flexShrink: 0 }} />
           )}
-          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{notification.msg}</span>
+          <span>{notification.msg}</span>
         </div>
       )}
 
       {/* Header Panel */}
-      <header className="glass-panel" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24, justifySelf: 'stretch' }}>
+      <header className="glass-panel app-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 800, background: 'linear-gradient(90deg, #fff 0%, var(--color-text-secondary) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              સભા વ્યવસ્થાપન
-            </h1>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>જ્ઞાન સત્સંગ મંડળ પાદરા</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span className="brand-mark" aria-hidden="true">
+              <Users size={22} />
+            </span>
+            <div>
+              <h1 className="app-title">સભા વ્યવસ્થાપન</h1>
+              <p className="app-subtitle">જ્ઞાન સત્સંગ મંડળ પાદરા</p>
+            </div>
           </div>
 
-          <button className="btn-secondary" onClick={logout} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-            <LogOut size={16} /> લોગઆઉટ
+          <button className="btn-secondary btn-sm" onClick={logout}>
+            <LogOut size={15} /> લોગઆઉટ
           </button>
         </div>
 
-
+        {/* Desktop primary navigation */}
+        {visibleNavItems.length > 1 && (
+          <nav className="main-nav" aria-label="મુખ્ય નેવિગેશન">
+            {visibleNavItems.map(item => (
+              <button
+                key={item.key}
+                className={`main-nav-item ${activeTab === item.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(item.key)}
+                aria-current={activeTab === item.key ? 'page' : undefined}
+              >
+                <item.icon size={16} /> {item.label}
+              </button>
+            ))}
+          </nav>
+        )}
       </header>
 
       {/* --- PANEL 1: ATTENDANCE --- */}
@@ -1370,17 +1390,16 @@ function AppContent() {
           </div>
 
           {/* Mobile Event Selector Dropdown */}
-          <div className="glass-panel mobile-only" style={{ padding: 16, marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 8, fontWeight: 500 }}>
+          <div className="glass-panel mobile-only" style={{ padding: 16 }}>
+            <label className="form-label">
               સભા પસંદ કરો ({SABHA_TYPES[sabhaTab]})
             </label>
             <select
               className="glass-input"
               value={selectedEventId || ''}
               onChange={(e) => loadEventAttendance(e.target.value)}
-              style={{ cursor: 'pointer' }}
             >
-              <option value="" style={{ background: '#111827' }}>-- સભા પસંદ કરો --</option>
+              <option value="">-- સભા પસંદ કરો --</option>
               {events
                 .filter(e => e.type === sabhaTab)
                 .map(event => {
@@ -1388,7 +1407,7 @@ function AppContent() {
                     year: 'numeric', month: 'long', day: 'numeric'
                   });
                   return (
-                    <option key={event._id} value={event._id} style={{ background: '#111827' }}>
+                    <option key={event._id} value={event._id}>
                       {formattedDate} {event.minReachTime ? `(સમય: ${formatTime12h(event.minReachTime)})` : ''}
                     </option>
                   );
@@ -1407,7 +1426,13 @@ function AppContent() {
                   <div className="skeleton" style={{ height: 50 }} />
                 </div>
               ) : events.filter(e => e.type === sabhaTab).length === 0 ? (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '24px 0' }}>કોઈ સભા મળી નથી</p>
+                <div className="empty-state" style={{ padding: '32px 12px' }}>
+                  <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                    <Calendar size={22} />
+                  </div>
+                  <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>કોઈ સભા મળી નથી</p>
+                  <p className="empty-state-desc" style={{ fontSize: '0.78rem', marginBottom: 0 }}>ઉપરના બટનથી નવી સભા આયોજિત કરો.</p>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {events
@@ -1439,8 +1464,12 @@ function AppContent() {
                                 </p>
                               )}
                             </div>
-                            <div style={{ display: 'flex', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                               <button
+                                className="icon-btn"
+                                style={{ width: 30, height: 30, minWidth: 30 }}
+                                title="સભા વિગતો સુધારો"
+                                aria-label="સભા વિગતો સુધારો"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingEventId(event._id);
@@ -1458,13 +1487,15 @@ function AppContent() {
 
                                   setShowEventModal(true);
                                 }}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
                               >
                                 <Edit size={14} />
                               </button>
                               <button
+                                className="icon-btn icon-btn-danger"
+                                style={{ width: 30, height: 30, minWidth: 30 }}
+                                title="સભા રદ કરો"
+                                aria-label="સભા રદ કરો"
                                 onClick={(e) => handleDeleteEvent(event._id, e)}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer' }}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1481,25 +1512,30 @@ function AppContent() {
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
               {activeEventData ? (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 16 }}>
+                  <div className="panel-header">
                     <div>
-                      <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                      <h2 className="panel-title">
                         હાજરી પત્રક: {new Date(activeEventData.date).toLocaleDateString('gu-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </h2>
-                      <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>
+                      <p className="panel-subtitle">
                         પ્રકાર: {SABHA_TYPES[activeEventData.type]}
                         {activeEventData.minReachTime && ` (પહોંચવાનો સમય: ${formatTime12h(activeEventData.minReachTime)})`}
                       </p>
                     </div>
 
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                        હાજર: {Object.values(attendanceRecords).filter(r => r.status === 'present').length} | ગેરહાજર: {Object.values(attendanceRecords).filter(r => r.status === 'absent').length}
-                      </span>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <span className="badge badge-success">
+                          હાજર: {Object.values(attendanceRecords).filter(r => r.status === 'present').length}
+                        </span>
+                        <span className="badge badge-danger">
+                          ગેરહાજર: {Object.values(attendanceRecords).filter(r => r.status === 'absent').length}
+                        </span>
+                      </div>
 
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button
-                          className="btn-secondary"
+                          className="btn-secondary btn-sm"
                           onClick={() => {
                             setEditingEventId(activeEventData._id);
                             setEventDate(new Date(activeEventData.date).toISOString().split('T')[0]);
@@ -1516,19 +1552,18 @@ function AppContent() {
 
                             setShowEventModal(true);
                           }}
-                          style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-full)' }}
                           title="સભા વિગતો સુધારો"
                         >
-                          <Edit size={12} /> સુધારો
+                          <Edit size={13} /> સુધારો
                         </button>
 
                         <button
-                          className="btn-danger"
+                          className="btn-danger btn-sm"
+                          style={{ boxShadow: 'none' }}
                           onClick={(e) => handleDeleteEvent(activeEventData._id, e)}
-                          style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: 'var(--radius-full)', boxShadow: 'none' }}
                           title="આ સભા રદ કરો"
                         >
-                          <Trash2 size={12} /> સભા રદ કરો
+                          <Trash2 size={13} /> સભા રદ કરો
                         </button>
                       </div>
                     </div>
@@ -1545,21 +1580,36 @@ function AppContent() {
                   )}
 
                   {/* Attendance Search Bar */}
-                  <div style={{ position: 'relative', marginBottom: 16 }}>
-                    <Search style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} size={18} />
+                  <div className="search-field">
+                    <Search className="search-icon" size={18} />
                     <input
                       type="text"
                       className="glass-input"
-                      style={{ paddingLeft: 40 }}
                       placeholder="નામ અથવા કોડથી સભ્યને શોધો..."
                       value={attendanceSearch}
                       onChange={(e) => setAttendanceSearch(e.target.value)}
                     />
+                    {attendanceSearch && (
+                      <button
+                        className="icon-btn"
+                        style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, minWidth: 32 }}
+                        onClick={() => setAttendanceSearch('')}
+                        aria-label="સર્ચ સાફ કરો"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Attendance Cards Grid */}
                   {displayMembers.length === 0 ? (
-                    <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '40px 0' }}>કોઈ સભ્યો નોંધાયેલા નથી. કૃપા કરીને સભ્યો ઉમેરો.</p>
+                    <div className="empty-state">
+                      <div className="empty-state-icon">
+                        <Users size={28} />
+                      </div>
+                      <p className="empty-state-title">કોઈ સભ્યો નોંધાયેલા નથી</p>
+                      <p className="empty-state-desc" style={{ marginBottom: 0 }}>હાજરી પૂરવા માટે પહેલા "સભ્યો" વિભાગમાંથી સભ્યો ઉમેરો.</p>
+                    </div>
                   ) : (() => {
                     const filteredMembers = displayMembers.filter(m =>
                       m.name.toLowerCase().includes(attendanceSearch.toLowerCase()) ||
@@ -1567,11 +1617,19 @@ function AppContent() {
                     );
 
                     if (filteredMembers.length === 0) {
-                      return <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '40px 0' }}>સર્ચ મુજબ કોઈ સભ્ય મળ્યો નથી.</p>;
+                      return (
+                        <div className="empty-state" style={{ padding: '36px 20px' }}>
+                          <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                            <Search size={22} />
+                          </div>
+                          <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>સર્ચ મુજબ કોઈ સભ્ય મળ્યો નથી</p>
+                          <button className="btn-ghost btn-sm" onClick={() => setAttendanceSearch('')}>સર્ચ સાફ કરો</button>
+                        </div>
+                      );
                     }
 
                     return (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, maxHeight: '420px', overflowY: 'auto', paddingRight: 4 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 14, maxHeight: '420px', overflowY: 'auto', paddingRight: 4 }}>
                         {filteredMembers.map(member => {
                           const rec = attendanceRecords[member._id] || { status: 'absent' };
                           const isPresent = rec.status === 'present';
@@ -1584,36 +1642,40 @@ function AppContent() {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: 12,
-                                borderLeft: `4px solid ${isPresent ? 'var(--color-success)' : 'var(--color-danger)'}`,
+                                borderLeft: `3px solid ${isPresent ? 'var(--color-success)' : 'var(--color-danger)'}`,
                                 background: isPresent ? 'rgba(16, 185, 129, 0.03)' : 'rgba(244, 63, 94, 0.02)'
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div>
-                                  <h4 style={{ fontWeight: 600, fontSize: '0.95rem' }}>{member.name}</h4>
-                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
-                                    કોડ: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{member.uniqueCode}</span> | {CATEGORY_TAGS[member.type]}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <h4 style={{ fontWeight: 600, fontSize: '0.95rem', overflowWrap: 'anywhere' }}>{member.name}</h4>
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{member.uniqueCode}</span>
+                                    <span className="badge badge-primary">{CATEGORY_TAGS[member.type]}</span>
                                   </p>
                                 </div>
 
                                 {/* Present / Absent Quick Buttons */}
-                                <div style={{ display: 'flex', gap: 6 }}>
+                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                                   <button
                                     onClick={() => markAttendance(member._id, 'present')}
                                     style={{
                                       border: 'none',
                                       borderRadius: '50%',
-                                      width: 32,
-                                      height: 32,
+                                      width: 40,
+                                      height: 40,
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
                                       cursor: 'pointer',
                                       background: isPresent ? 'var(--color-success)' : 'rgba(255,255,255,0.05)',
                                       color: isPresent ? '#fff' : 'var(--color-text-secondary)',
-                                      transition: 'var(--transition-smooth)'
+                                      transition: 'var(--transition-smooth)',
+                                      boxShadow: isPresent ? '0 2px 10px rgba(16,185,129,0.4)' : 'none'
                                     }}
                                     title="હાજર"
+                                    aria-label={`${member.name} હાજર`}
+                                    aria-pressed={isPresent}
                                   >
                                     <CheckCircle size={18} />
                                   </button>
@@ -1622,17 +1684,20 @@ function AppContent() {
                                     style={{
                                       border: 'none',
                                       borderRadius: '50%',
-                                      width: 32,
-                                      height: 32,
+                                      width: 40,
+                                      height: 40,
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
                                       cursor: 'pointer',
                                       background: !isPresent ? 'var(--color-danger)' : 'rgba(255,255,255,0.05)',
                                       color: !isPresent ? '#fff' : 'var(--color-text-secondary)',
-                                      transition: 'var(--transition-smooth)'
+                                      transition: 'var(--transition-smooth)',
+                                      boxShadow: !isPresent ? '0 2px 10px rgba(244,63,94,0.35)' : 'none'
                                     }}
                                     title="ગેરહાજર"
+                                    aria-label={`${member.name} ગેરહાજર`}
+                                    aria-pressed={!isPresent}
                                   >
                                     <XCircle size={18} />
                                   </button>
@@ -1642,13 +1707,13 @@ function AppContent() {
                               {/* Arrival Time and Late prompt */}
                               {isPresent && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px dashed var(--glass-border)', paddingTop: 8 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
                                     <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                       <Clock size={12} /> આવ્યા સમય: {new Date(rec.arrivalTime).toLocaleTimeString('gu-IN', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                     {rec.isLate && (
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-warning)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                                        <AlertTriangle size={12} /> મોડા પડ્યા!
+                                      <span className="badge badge-warning">
+                                        <AlertTriangle size={11} /> મોડા પડ્યા!
                                       </span>
                                     )}
                                   </div>
@@ -1660,7 +1725,7 @@ function AppContent() {
                                       placeholder="મોડા આવવાનું કારણ લખો (નોંધ)..."
                                       value={rec.remark}
                                       onChange={(e) => handleRemarkChange(member._id, e.target.value)}
-                                      style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: 8 }}
+                                      style={{ padding: '8px 12px', minHeight: 38, fontSize: '0.8rem', borderRadius: 8 }}
                                     />
                                   )}
                                 </div>
@@ -1682,9 +1747,21 @@ function AppContent() {
                   </button>
                 </>
               ) : (
-                <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-muted)' }}>
-                  <Calendar size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
-                  <p>જમણી બાજુથી સભા પસંદ કરો અથવા નવી સભા આયોજિત કરો</p>
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    <Calendar size={28} />
+                  </div>
+                  <p className="empty-state-title">કોઈ સભા પસંદ કરેલી નથી</p>
+                  <p className="empty-state-desc">સભા ઈતિહાસમાંથી સભા પસંદ કરો અથવા નવી સભા આયોજિત કરો.</p>
+                  <button className="btn-primary" onClick={() => {
+                    setEditingEventId(null);
+                    setEventType(sabhaTab);
+                    setEventMinReachTimeText('10:00');
+                    setEventMinReachTimePeriod('AM');
+                    setShowEventModal(true);
+                  }}>
+                    <Plus size={16} /> નવી સભા આયોજિત કરો
+                  </button>
                 </div>
               )}
             </div>
@@ -1697,32 +1774,42 @@ function AppContent() {
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Controls bar */}
           <div className="glass-panel" style={{ padding: 20, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 280 }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Search style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} size={18} />
+            <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 280, flexWrap: 'wrap' }}>
+              <div className="search-field" style={{ minWidth: 200 }}>
+                <Search className="search-icon" size={18} />
                 <input
                   type="text"
                   className="glass-input"
-                  style={{ paddingLeft: 40 }}
                   placeholder="નામ અથવા યુનિક કોડથી સર્ચ કરો..."
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                 />
+                {memberSearch && (
+                  <button
+                    className="icon-btn"
+                    style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, minWidth: 32 }}
+                    onClick={() => setMemberSearch('')}
+                    aria-label="સર્ચ સાફ કરો"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
 
               <select
                 className="glass-input"
-                style={{ maxWidth: 180, cursor: 'pointer' }}
+                style={{ maxWidth: 200, width: 'auto', flex: '0 1 auto' }}
                 value={memberTypeFilter}
                 onChange={(e) => setMemberTypeFilter(e.target.value)}
+                aria-label="સભ્ય પ્રકાર ફિલ્ટર"
               >
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-                  <option key={k} value={k} style={{ background: '#111827', color: '#fff' }}>{v}</option>
+                  <option key={k} value={k}>{v}</option>
                 ))}
               </select>
             </div>
 
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button className="btn-secondary" onClick={() => {
                 setBulkResult(null);
                 setBulkText('');
@@ -1751,50 +1838,53 @@ function AppContent() {
               <SkeletonCard />
             </div>
           ) : members.length === 0 ? (
-            <div className="glass-panel" style={{ padding: '60px 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              કોઈ સભ્ય મળ્યો નથી
+            <div className="glass-panel empty-state">
+              <div className="empty-state-icon">
+                <Users size={28} />
+              </div>
+              <p className="empty-state-title">કોઈ સભ્ય મળ્યો નથી</p>
+              <p className="empty-state-desc">સર્ચ/ફિલ્ટર બદલો અથવા નવો સભ્ય ઉમેરો.</p>
+              <button className="btn-primary" onClick={() => {
+                setEditingMember(null);
+                setMemberName('');
+                setMemberCode('');
+                setMemberType('yuva');
+                setShowMemberModal(true);
+              }}>
+                <UserPlus size={16} /> સભ્ય ઉમેરો
+              </button>
             </div>
           ) : (
             <div className="grid-3">
               {[...members].sort((a, b) => a.name.localeCompare(b.name, 'gu')).map(member => (
                 <div key={member._id} className="glass-panel glass-panel-hover" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          padding: '3px 8px',
-                          borderRadius: 8,
-                          background: 'rgba(99, 102, 241, 0.15)',
-                          color: 'var(--color-primary)',
-                          textTransform: 'uppercase'
-                        }}
-                      >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <span className="badge badge-primary">
                         {CATEGORY_TAGS[member.type]}
                       </span>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginTop: 8 }}>{member.name}</h3>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: 8, overflowWrap: 'anywhere' }}>{member.name}</h3>
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                         કોડ: {member.uniqueCode}
                       </p>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button
-                        className="btn-secondary"
+                        className="icon-btn"
                         onClick={() => triggerEditMember(member)}
-                        style={{ padding: 6, borderRadius: '50%' }}
                         title="સુધારો"
+                        aria-label={`${member.name} સુધારો`}
                       >
-                        <Edit size={14} />
+                        <Edit size={15} />
                       </button>
                       <button
-                        className="btn-danger"
+                        className="icon-btn icon-btn-danger"
                         onClick={() => handleDeleteMember(member._id)}
-                        style={{ padding: 6, borderRadius: '50%', boxShadow: 'none' }}
                         title="ડીલીટ"
+                        aria-label={`${member.name} ડીલીટ`}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </div>
@@ -1880,12 +1970,12 @@ function AppContent() {
               {/* Search list of members */}
               <div className="glass-panel" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>સભ્ય પ્રોગ્રેસ રીપોર્ટ</h3>
-                <div style={{ position: 'relative' }}>
-                  <Search style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} size={16} />
+                <div className="search-field">
+                  <Search className="search-icon" size={16} />
                   <input
                     type="text"
                     className="glass-input"
-                    style={{ paddingLeft: 36, fontSize: '0.9rem' }}
+                    style={{ fontSize: '0.9rem' }}
                     placeholder="સભ્ય શોધો..."
                     value={reportSearch}
                     onChange={(e) => setReportSearch(e.target.value)}
@@ -1927,10 +2017,10 @@ function AppContent() {
                   <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                       <div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: 8, background: 'rgba(99, 102, 241, 0.15)', color: 'var(--color-primary)' }}>
+                        <span className="badge badge-primary">
                           {CATEGORY_LABELS[selectedMemberReport.member.type]}
                         </span>
-                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6 }}>{selectedMemberReport.member.name}</h2>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6, letterSpacing: '-0.01em' }}>{selectedMemberReport.member.name}</h2>
                         <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                           યુનિક આઈડી કોડ: {selectedMemberReport.member.uniqueCode}
                         </p>
@@ -2045,9 +2135,12 @@ function AppContent() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-muted)' }}>
-                    <TrendingUp size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
-                    <p>ડાબી બાજુની લિસ્ટમાંથી કોઈપણ સભ્ય પસંદ કરો</p>
+                  <div className="empty-state">
+                    <div className="empty-state-icon">
+                      <TrendingUp size={28} />
+                    </div>
+                    <p className="empty-state-title">કોઈ સભ્ય પસંદ કરેલ નથી</p>
+                    <p className="empty-state-desc" style={{ marginBottom: 0 }}>ડાબી બાજુની યાદીમાંથી સભ્ય પસંદ કરવાથી તેમનો પ્રોગ્રેસ રિપોર્ટ અહીં દેખાશે.</p>
                   </div>
                 )}
               </div>
@@ -2057,10 +2150,10 @@ function AppContent() {
           {/* Sub Tab 2: Leaderboard */}
           {reportsSubTab === 'leaderboard' && (
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <div className="panel-header">
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>સભા શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦)</h3>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>સભામાં શ્રેષ્ઠ હાજરી આપનાર સભ્યોનું પત્રક</p>
+                  <h3 className="panel-title">સભા શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦)</h3>
+                  <p className="panel-subtitle">સભામાં શ્રેષ્ઠ હાજરી આપનાર સભ્યોનું પત્રક</p>
                 </div>
                 <button
                   className="btn-primary"
@@ -2074,29 +2167,29 @@ function AppContent() {
               {loadingTopAttendees ? (
                 <SkeletonText rows={8} />
               ) : topAttendeesData ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                   <div className="grid-2">
                     {/* Savar Katha Top 10 */}
                     <div className="glass-card" style={{ overflowX: 'auto' }}>
                       <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-secondary)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
                         સવારની કથા: હાજરીમાં શ્રેષ્ઠ ૧૦
                       </h4>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <table className="mini-table">
                         <thead>
-                          <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)' }}>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>નામ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>કોડ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'right' }}>હાજરી</th>
+                          <tr>
+                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
+                            <th style={{ textAlign: 'left' }}>નામ</th>
+                            <th style={{ textAlign: 'left' }}>કોડ</th>
+                            <th style={{ textAlign: 'right' }}>હાજરી</th>
                           </tr>
                         </thead>
                         <tbody>
                           {topAttendeesData.topSavar.map((item, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                              <td style={{ padding: '8px 4px' }}>{idx + 1}</td>
-                              <td style={{ padding: '8px 4px', fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ padding: '8px 4px', fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'right', color: 'var(--color-success)' }}>{item.count} વખત</td>
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
+                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 600 }}>{item.count} વખત</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2108,22 +2201,22 @@ function AppContent() {
                       <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-primary)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
                         રવિસભા: હાજરીમાં શ્રેષ્ઠ ૧૦
                       </h4>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <table className="mini-table">
                         <thead>
-                          <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)' }}>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>નામ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>કોડ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'right' }}>હાજરી</th>
+                          <tr>
+                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
+                            <th style={{ textAlign: 'left' }}>નામ</th>
+                            <th style={{ textAlign: 'left' }}>કોડ</th>
+                            <th style={{ textAlign: 'right' }}>હાજરી</th>
                           </tr>
                         </thead>
                         <tbody>
                           {topAttendeesData.topRavi.map((item, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                              <td style={{ padding: '8px 4px' }}>{idx + 1}</td>
-                              <td style={{ padding: '8px 4px', fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ padding: '8px 4px', fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'right', color: 'var(--color-success)' }}>{item.count} વખત</td>
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
+                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 600 }}>{item.count} વખત</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2137,22 +2230,22 @@ function AppContent() {
                       <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-success)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
                         રવિસભા: સમયસર પહોંચનાર (પ્રાથમિકતા)
                       </h4>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <table className="mini-table">
                         <thead>
-                          <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)' }}>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>નામ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>કોડ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'right' }}>સમયસર હાજરી</th>
+                          <tr>
+                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
+                            <th style={{ textAlign: 'left' }}>નામ</th>
+                            <th style={{ textAlign: 'left' }}>કોડ</th>
+                            <th style={{ textAlign: 'right' }}>સમયસર હાજરી</th>
                           </tr>
                         </thead>
                         <tbody>
                           {topAttendeesData.earlyRavi.map((item, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                              <td style={{ padding: '8px 4px' }}>{idx + 1}</td>
-                              <td style={{ padding: '8px 4px', fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ padding: '8px 4px', fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'right', color: 'var(--color-success)' }}>{item.count} વખત</td>
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
+                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 600 }}>{item.count} વખત</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2164,22 +2257,22 @@ function AppContent() {
                       <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-warning)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
                         રવિસભા: મોડા પડનાર ૧૦ સભ્યો
                       </h4>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <table className="mini-table">
                         <thead>
-                          <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)' }}>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>નામ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'left' }}>કોડ</th>
-                            <th style={{ padding: '8px 4px', textAlign: 'right' }}>મોડા આવ્યા</th>
+                          <tr>
+                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
+                            <th style={{ textAlign: 'left' }}>નામ</th>
+                            <th style={{ textAlign: 'left' }}>કોડ</th>
+                            <th style={{ textAlign: 'right' }}>મોડા આવ્યા</th>
                           </tr>
                         </thead>
                         <tbody>
                           {topAttendeesData.lateRavi.map((item, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                              <td style={{ padding: '8px 4px' }}>{idx + 1}</td>
-                              <td style={{ padding: '8px 4px', fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ padding: '8px 4px', fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ padding: '8px 4px', textAlign: 'right', color: 'var(--color-danger)' }}>{item.count} વખત</td>
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
+                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--color-danger)', fontWeight: 600 }}>{item.count} વખત</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2188,7 +2281,13 @@ function AppContent() {
                   </div>
                 </div>
               ) : (
-                <p style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>રેકોર્ડ મેળવવામાં ભૂલ થઈ છે.</p>
+                <div className="empty-state" style={{ padding: '36px 20px' }}>
+                  <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                    <AlertTriangle size={22} />
+                  </div>
+                  <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>રેકોર્ડ મેળવવામાં ભૂલ થઈ છે</p>
+                  <button className="btn-secondary btn-sm" onClick={fetchTopAttendees}>ફરી પ્રયત્ન કરો</button>
+                </div>
               )}
             </div>
           )}
@@ -2196,10 +2295,10 @@ function AppContent() {
           {/* Sub Tab 3: Particular Sabha Report */}
           {reportsSubTab === 'particular' && (
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <div className="panel-header">
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>વિશિષ્ટ સભા વિગતવાર રિપોર્ટ</h3>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>કોઈ ચોક્કસ સભા તારીખનો સંપૂર્ણ રિપોર્ટ મેળવો</p>
+                  <h3 className="panel-title">વિશિષ્ટ સભા વિગતવાર રિપોર્ટ</h3>
+                  <p className="panel-subtitle">કોઈ ચોક્કસ સભા તારીખનો સંપૂર્ણ રિપોર્ટ મેળવો</p>
                 </div>
                 {particularEventReport && (
                   <button
@@ -2212,16 +2311,15 @@ function AppContent() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 8, fontWeight: 500 }}>રિપોર્ટ માટે સભા પસંદ કરો:</label>
+                <label className="form-label">રિપોર્ટ માટે સભા પસંદ કરો:</label>
                 <select
                   className="glass-input"
                   value={selectedParticularEventId}
                   onChange={(e) => setSelectedParticularEventId(e.target.value)}
-                  style={{ cursor: 'pointer' }}
                 >
-                  <option value="" style={{ background: '#111827' }}>-- સભા પસંદ કરો (તારીખ અને પ્રકાર) --</option>
+                  <option value="">-- સભા પસંદ કરો (તારીખ અને પ્રકાર) --</option>
                   {events.map(event => (
-                    <option key={event._id} value={event._id} style={{ background: '#111827' }}>
+                    <option key={event._id} value={event._id}>
                       {new Date(event.date).toLocaleDateString('gu-IN', { year: 'numeric', month: 'long', day: 'numeric' })} - {SABHA_TYPES[event.type]} {event.minReachTime ? `(${formatTime12h(event.minReachTime)})` : ''}
                     </option>
                   ))}
@@ -2275,49 +2373,43 @@ function AppContent() {
 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'flex', gap: 16, fontSize: '0.85rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8 }}>
-                      <span>હાજર સભ્યો: {combinedList.filter(m => m.status === 'present').length}</span>
-                      <span>ગેરહાજર સભ્યો: {combinedList.filter(m => m.status === 'absent').length}</span>
-                      <span>મોડા પડનાર: {combinedList.filter(m => m.status === 'present' && m.isLate).length}</span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="badge badge-success">હાજર સભ્યો: {combinedList.filter(m => m.status === 'present').length}</span>
+                      <span className="badge badge-danger">ગેરહાજર સભ્યો: {combinedList.filter(m => m.status === 'absent').length}</span>
+                      <span className="badge badge-warning">મોડા પડનાર: {combinedList.filter(m => m.status === 'present' && m.isLate).length}</span>
                     </div>
 
-                    <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <div className="table-wrap" style={{ maxHeight: '440px', overflowY: 'auto' }}>
+                      <table>
                         <thead>
-                          <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)', textAlign: 'left' }}>
-                            <th style={{ padding: 8 }}>ક્રમ</th>
-                            <th style={{ padding: 8 }}>નામ</th>
-                            <th style={{ padding: 8 }}>કોડ</th>
-                            <th style={{ padding: 8 }}>પ્રકાર</th>
-                            <th style={{ padding: 8 }}>સ્થિતિ</th>
-                            <th style={{ padding: 8 }}>પહોંચવાનો સમય</th>
-                            <th style={{ padding: 8 }}>નોંધ (રિમાર્ક)</th>
+                          <tr>
+                            <th>ક્રમ</th>
+                            <th>નામ</th>
+                            <th>કોડ</th>
+                            <th>પ્રકાર</th>
+                            <th>સ્થિતિ</th>
+                            <th>પહોંચવાનો સમય</th>
+                            <th>નોંધ (રિમાર્ક)</th>
                           </tr>
                         </thead>
                         <tbody>
                           {combinedList.map((m, idx) => {
                             const isPresent = m.status === 'present';
                             return (
-                              <tr key={m._id} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                                <td style={{ padding: 8 }}>{idx + 1}</td>
-                                <td style={{ padding: 8, fontWeight: 600 }}>{m.name}</td>
-                                <td style={{ padding: 8, fontFamily: 'monospace' }}>{m.uniqueCode}</td>
-                                <td style={{ padding: 8 }}>{CATEGORY_TAGS[m.type]}</td>
-                                <td style={{ padding: 8 }}>
-                                  <span style={{
-                                    padding: '2px 8px',
-                                    borderRadius: 6,
-                                    fontSize: '0.75rem',
-                                    background: isPresent ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-                                    color: isPresent ? 'var(--color-success)' : 'var(--color-danger)'
-                                  }}>
+                              <tr key={m._id}>
+                                <td>{idx + 1}</td>
+                                <td style={{ fontWeight: 600 }}>{m.name}</td>
+                                <td style={{ fontFamily: 'monospace' }}>{m.uniqueCode}</td>
+                                <td>{CATEGORY_TAGS[m.type]}</td>
+                                <td>
+                                  <span className={`badge ${isPresent ? (m.isLate ? 'badge-warning' : 'badge-success') : 'badge-danger'}`}>
                                     {isPresent ? (m.isLate ? 'મોડા' : 'હાજર') : 'ગેરહાજર'}
                                   </span>
                                 </td>
-                                <td style={{ padding: 8, color: 'var(--color-text-secondary)' }}>
+                                <td style={{ color: 'var(--color-text-secondary)' }}>
                                   {m.arrivalTime ? new Date(m.arrivalTime).toLocaleTimeString('gu-IN', { hour: '2-digit', minute: '2-digit' }) : '-'}
                                 </td>
-                                <td style={{ padding: 8, fontStyle: 'italic', color: 'var(--color-warning)' }}>
+                                <td style={{ fontStyle: 'italic', color: 'var(--color-warning)' }}>
                                   {m.remark || '-'}
                                 </td>
                               </tr>
@@ -2329,9 +2421,13 @@ function AppContent() {
                   </div>
                 );
               })() : (
-                <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '40px 0' }}>
-                  સભા પસંદ કરો
-                </p>
+                <div className="empty-state" style={{ padding: '36px 20px' }}>
+                  <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                    <Calendar size={22} />
+                  </div>
+                  <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>સભા પસંદ કરો</p>
+                  <p className="empty-state-desc" style={{ marginBottom: 0 }}>ઉપરના ડ્રોપડાઉનમાંથી સભા પસંદ કરવાથી સંપૂર્ણ રિપોર્ટ અહીં દેખાશે.</p>
+                </div>
               )}
             </div>
           )}
@@ -2385,24 +2481,23 @@ function AppContent() {
               </div>
 
               {/* Mobile select dropdown for sevas */}
-              <div className="mobile-only" style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>
+              <div className="glass-panel mobile-only" style={{ padding: 16 }}>
+                <label className="form-label">
                   સેવા પસંદ કરો:
                 </label>
                 <select
                   className="glass-input"
                   value={selectedSevaId || ''}
                   onChange={(e) => loadSevaAttendance(e.target.value)}
-                  style={{ cursor: 'pointer' }}
                 >
-                  <option value="" style={{ background: '#111827' }}>-- સેવા પસંદ કરો --</option>
+                  <option value="">-- સેવા પસંદ કરો --</option>
                   {sevas.map(seva => {
                     const formattedDate = new Date(seva.date).toLocaleDateString('gu-IN', {
                       year: 'numeric', month: 'long', day: 'numeric'
                     });
                     const typeName = seva.sevaType ? seva.sevaType.name : 'સેવા';
                     return (
-                      <option key={seva._id} value={seva._id} style={{ background: '#111827' }}>
+                      <option key={seva._id} value={seva._id}>
                         {formattedDate} - {typeName} {seva.leader ? `(લીડર: ${seva.leader})` : ''}
                       </option>
                     );
@@ -2424,7 +2519,13 @@ function AppContent() {
                       <div className="skeleton" style={{ height: 50 }} />
                     </div>
                   ) : sevas.length === 0 ? (
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '24px 0' }}>કોઈ સેવા મળી નથી</p>
+                    <div className="empty-state" style={{ padding: '32px 12px' }}>
+                      <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                        <Heart size={22} />
+                      </div>
+                      <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>કોઈ સેવા મળી નથી</p>
+                      <p className="empty-state-desc" style={{ fontSize: '0.78rem', marginBottom: 0 }}>ઉપરના બટનથી નવી સેવા આયોજિત કરો.</p>
+                    </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {sevas.map(seva => {
@@ -2456,13 +2557,16 @@ function AppContent() {
                                   </p>
                                 )}
                               </div>
-                              <div style={{ display: 'flex', gap: 8 }}>
+                              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
                                 <button
+                                  className="icon-btn icon-btn-danger"
+                                  style={{ width: 30, height: 30, minWidth: 30 }}
+                                  title="સેવા કાઢી નાખો"
+                                  aria-label="સેવા કાઢી નાખો"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDeleteSeva(seva._id);
                                   }}
-                                  style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 2 }}
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -2479,30 +2583,31 @@ function AppContent() {
                 <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {activeSevaData ? (
                     <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 16 }}>
+                      <div className="panel-header">
                         <div>
-                          <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                          <h2 className="panel-title">
                             હાજરી પત્રક: {new Date(activeSevaData.date).toLocaleDateString('gu-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                           </h2>
-                          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>
+                          <p className="panel-subtitle">
                             સેવા પ્રકાર: {activeSevaData.sevaType ? activeSevaData.sevaType.name : 'અજ્ઞાત'} {activeSevaData.leader ? `| લીડર: ${activeSevaData.leader}` : ''}
                           </p>
                         </div>
 
                         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                            હાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'present').length} | ગેરહાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'absent').length}
-                          </span>
-                          <button className="btn-primary" onClick={handleSaveSevaAttendance} disabled={savingSevaAttendance}>
-                            {savingSevaAttendance ? <SpinnerLoader size={16} /> : 'હાજરી સાચવો'}
-                          </button>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <span className="badge badge-success">
+                              હાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'present').length}
+                            </span>
+                            <span className="badge badge-danger">
+                              ગેરહાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'absent').length}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
                       {/* Search Bar for Member Attendance */}
-                      <div className="search-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}>
-                        <Search size={18} className="search-icon" />
-
+                      <div className="search-field">
+                        <Search className="search-icon" size={18} />
                         <input
                           type="text"
                           className="glass-input"
@@ -2510,103 +2615,181 @@ function AppContent() {
                           value={sevaAttendanceSearch}
                           onChange={(e) => setSevaAttendanceSearch(e.target.value)}
                         />
+                        {sevaAttendanceSearch && (
+                          <button
+                            className="icon-btn"
+                            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, minWidth: 32 }}
+                            onClick={() => setSevaAttendanceSearch('')}
+                            aria-label="સર્ચ સાફ કરો"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
                       </div>
 
-                      {/* Attendance Table */}
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                          <thead>
-                            <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)' }}>
-                              <th style={{ padding: 12, fontSize: '0.85rem' }}>કોડ</th>
-                              <th style={{ padding: 12, fontSize: '0.85rem' }}>સભ્યનું નામ</th>
-                              <th style={{ padding: 12, fontSize: '0.85rem' }}>પ્રકાર</th>
-                              <th style={{ padding: 12, fontSize: '0.85rem', textAlign: 'center' }}>હાજરી સ્થિતિ</th>
-                              <th style={{ padding: 12, fontSize: '0.85rem', textAlign: 'center' }}>સેવાના કલાકો</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sevaMembers
-                              .filter(m => {
-                                if (!sevaAttendanceSearch.trim()) return true;
-                                const query = sevaAttendanceSearch.toLowerCase();
-                                return m.name.toLowerCase().includes(query) || m.uniqueCode.toLowerCase().includes(query);
-                              })
-                              .map(m => {
-                                const rec = sevaAttendanceRecords[m._id] || { status: 'absent', hours: 0 };
-                                const isPresent = rec.status === 'present';
-                                return (
-                                  <tr
-                                    key={m._id}
-                                    style={{
-                                      borderBottom: '1px dashed rgba(255,255,255,0.05)',
-                                      background: isPresent ? 'rgba(16, 185, 129, 0.02)' : 'transparent',
-                                      transition: 'background 0.2s ease'
-                                    }}
-                                  >
-                                    <td style={{ padding: 12, fontSize: '0.9rem', fontWeight: 600 }}>{m.uniqueCode}</td>
-                                    <td style={{ padding: 12, fontSize: '0.9rem', fontWeight: 700 }}>{m.name}</td>
-                                    <td style={{ padding: 12, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                      {SEVA_CATEGORY_TAGS[m.type] || m.type}
-                                    </td>
-                                    <td style={{ padding: 12, textAlign: 'center' }}>
+                      {/* Attendance Cards Grid — same experience as Sabha attendance */}
+                      {sevaMembers.length === 0 ? (
+                        <div className="empty-state">
+                          <div className="empty-state-icon">
+                            <Users size={28} />
+                          </div>
+                          <p className="empty-state-title">કોઈ સેવા સભ્યો નોંધાયેલા નથી</p>
+                          <p className="empty-state-desc" style={{ marginBottom: 0 }}>હાજરી પૂરવા માટે પહેલા "સેવા સભ્યો સંચાલન" વિભાગમાંથી સભ્યો ઉમેરો.</p>
+                        </div>
+                      ) : (() => {
+                        const filteredSevaMembers = sevaMembers.filter(m => {
+                          if (!sevaAttendanceSearch.trim()) return true;
+                          const query = sevaAttendanceSearch.toLowerCase();
+                          return m.name.toLowerCase().includes(query) || m.uniqueCode.toLowerCase().includes(query);
+                        });
+
+                        if (filteredSevaMembers.length === 0) {
+                          return (
+                            <div className="empty-state" style={{ padding: '36px 20px' }}>
+                              <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                                <Search size={22} />
+                              </div>
+                              <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>સર્ચ મુજબ કોઈ સભ્ય મળ્યો નથી</p>
+                              <button className="btn-ghost btn-sm" onClick={() => setSevaAttendanceSearch('')}>સર્ચ સાફ કરો</button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: 14, maxHeight: '420px', overflowY: 'auto', paddingRight: 4 }}>
+                            {filteredSevaMembers.map(m => {
+                              const rec = sevaAttendanceRecords[m._id] || { status: 'absent', hours: 0 };
+                              const isPresent = rec.status === 'present';
+
+                              return (
+                                <div
+                                  key={m._id}
+                                  className="glass-card animate-fade-in"
+                                  style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 12,
+                                    borderLeft: `3px solid ${isPresent ? 'var(--color-success)' : 'var(--color-danger)'}`,
+                                    background: isPresent ? 'rgba(16, 185, 129, 0.03)' : 'rgba(244, 63, 94, 0.02)'
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                    <div style={{ minWidth: 0 }}>
+                                      <h4 style={{ fontWeight: 600, fontSize: '0.95rem', overflowWrap: 'anywhere' }}>{m.name}</h4>
+                                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{m.uniqueCode}</span>
+                                        <span className="badge badge-primary">{SEVA_CATEGORY_TAGS[m.type] || m.type}</span>
+                                      </p>
+                                    </div>
+
+                                    {/* Present / Absent Quick Buttons */}
+                                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                                       <button
-                                        onClick={() => toggleSevaAttendanceStatus(m._id)}
-                                        className={isPresent ? 'btn-success' : 'btn-danger'}
+                                        onClick={() => { if (!isPresent) toggleSevaAttendanceStatus(m._id); }}
                                         style={{
-                                          padding: '6px 12px',
-                                          fontSize: '0.75rem',
-                                          borderRadius: 6,
-                                          width: 80,
                                           border: 'none',
-                                          cursor: 'pointer',
-                                          fontWeight: 600,
-                                          display: 'inline-flex',
-                                          justifyContent: 'center',
+                                          borderRadius: '50%',
+                                          width: 40,
+                                          height: 40,
+                                          display: 'flex',
                                           alignItems: 'center',
-                                          gap: 4
+                                          justifyContent: 'center',
+                                          cursor: 'pointer',
+                                          background: isPresent ? 'var(--color-success)' : 'rgba(255,255,255,0.05)',
+                                          color: isPresent ? '#fff' : 'var(--color-text-secondary)',
+                                          transition: 'var(--transition-smooth)',
+                                          boxShadow: isPresent ? '0 2px 10px rgba(16,185,129,0.4)' : 'none'
                                         }}
+                                        title="હાજર"
+                                        aria-label={`${m.name} હાજર`}
+                                        aria-pressed={isPresent}
                                       >
-                                        {isPresent ? (
-                                          <>
-                                            <CheckCircle size={12} /> હાજર
-                                          </>
-                                        ) : (
-                                          <>
-                                            <XCircle size={12} /> ગેરહાજર
-                                          </>
-                                        )}
+                                        <CheckCircle size={18} />
                                       </button>
-                                    </td>
-                                    <td style={{ padding: 12, textAlign: 'center' }}>
+                                      <button
+                                        onClick={() => { if (isPresent) toggleSevaAttendanceStatus(m._id); }}
+                                        style={{
+                                          border: 'none',
+                                          borderRadius: '50%',
+                                          width: 40,
+                                          height: 40,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          cursor: 'pointer',
+                                          background: !isPresent ? 'var(--color-danger)' : 'rgba(255,255,255,0.05)',
+                                          color: !isPresent ? '#fff' : 'var(--color-text-secondary)',
+                                          transition: 'var(--transition-smooth)',
+                                          boxShadow: !isPresent ? '0 2px 10px rgba(244,63,94,0.35)' : 'none'
+                                        }}
+                                        title="ગેરહાજર"
+                                        aria-label={`${m.name} ગેરહાજર`}
+                                        aria-pressed={!isPresent}
+                                      >
+                                        <XCircle size={18} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Seva hours input (shown when present) */}
+                                  {isPresent && (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTop: '1px dashed var(--glass-border)', paddingTop: 8 }}>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Clock size={12} /> સેવાના કલાકો:
+                                      </span>
                                       <input
                                         type="number"
                                         min="0"
                                         max="24"
                                         step="0.5"
-                                        disabled={!isPresent}
                                         className="glass-input"
                                         style={{
-                                          width: 70,
+                                          width: 84,
                                           textAlign: 'center',
-                                          padding: '4px 6px',
-                                          fontSize: '0.85rem',
-                                          opacity: isPresent ? 1 : 0.4
+                                          padding: '6px 8px',
+                                          minHeight: 38,
+                                          fontSize: '0.85rem'
                                         }}
                                         value={rec.hours}
                                         onChange={(e) => handleSevaHoursChange(m._id, e.target.value)}
+                                        aria-label={`${m.name} સેવાના કલાકો`}
                                       />
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                          </tbody>
-                        </table>
-                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+
+                      <button
+                        className="btn-primary"
+                        onClick={handleSaveSevaAttendance}
+                        disabled={savingSevaAttendance || sevaMembers.length === 0}
+                        style={{ alignSelf: 'flex-end', marginTop: 12 }}
+                      >
+                        {savingSevaAttendance ? <SpinnerLoader size={18} /> : <UserCheck size={18} />} હાજરી સબમિટ કરો
+                      </button>
                     </>
                   ) : (
-                    <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '100px 0' }}>
-                      <Heart size={48} style={{ opacity: 0.15, marginBottom: 16 }} />
-                      <p>કોઈ સેવા પસંદ કરો અથવા ડાબી બાજુની યાદીમાંથી હાજરી પૂરવા માટે ક્લિક કરો.</p>
+                    <div className="empty-state" style={{ padding: '80px 20px' }}>
+                      <div className="empty-state-icon">
+                        <Heart size={28} />
+                      </div>
+                      <p className="empty-state-title">કોઈ સેવા પસંદ કરેલી નથી</p>
+                      <p className="empty-state-desc">હાજરી પૂરવા માટે યાદીમાંથી સેવા પસંદ કરો અથવા નવી સેવા આયોજિત કરો.</p>
+                      <button
+                        className="btn-primary"
+                        onClick={() => {
+                          setSevaDate(new Date().toISOString().split('T')[0]);
+                          setSevaTypeId('');
+                          setSevaLeader('');
+                          setShowSevaModal(true);
+                        }}
+                      >
+                        <Plus size={16} /> નવી સેવા આયોજિત કરો
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2617,14 +2800,24 @@ function AppContent() {
           {/* Module 2: Seva Member Management */}
           {sevaModuleTab === 'members' && (
             <div className="glass-panel animate-fade-in" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <div className="panel-header">
                 <div>
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>સેવા સભ્યો સંચાલન</h2>
-                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>
+                  <h2 className="panel-title">સેવા સભ્યો સંચાલન</h2>
+                  <p className="panel-subtitle">
                     સેવા માટે નોંધાયેલા તમામ સભ્યોની યાદી ({sevaMembers.length} સભ્યો)
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setBulkSevaMemberText('');
+                      setBulkSevaMemberResult(null);
+                      setShowBulkSevaMemberModal(true);
+                    }}
+                  >
+                    <FileSpreadsheet size={16} /> સભ્યો બલ્ક અપલોડ
+                  </button>
                   <button
                     className="btn-primary"
                     onClick={() => {
@@ -2635,25 +2828,15 @@ function AppContent() {
                       setShowSevaMemberModal(true);
                     }}
                   >
-                    <Plus size={16} /> નવો સેવા સભ્ય ઉમેરો
-                  </button>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => {
-                      setBulkSevaMemberText('');
-                      setBulkSevaMemberResult(null);
-                      setShowBulkSevaMemberModal(true);
-                    }}
-                  >
-                    <UserPlus size={16} /> સભ્યો બલ્ક અપલોડ
+                    <UserPlus size={16} /> નવો સેવા સભ્ય ઉમેરો
                   </button>
                 </div>
               </div>
 
               {/* Filters & Search */}
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-                <div className="search-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px", minWidth: '250px', marginBottom: 0 }}>
-                  <Search size={18} className="search-icon" />
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div className="search-field" style={{ minWidth: 220 }}>
+                  <Search className="search-icon" size={18} />
                   <input
                     type="text"
                     className="glass-input"
@@ -2661,38 +2844,46 @@ function AppContent() {
                     value={sevaMemberSearch}
                     onChange={(e) => setSevaMemberSearch(e.target.value)}
                   />
+                  {sevaMemberSearch && (
+                    <button
+                      className="icon-btn"
+                      style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, minWidth: 32 }}
+                      onClick={() => setSevaMemberSearch('')}
+                      aria-label="સર્ચ સાફ કરો"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>પ્રકાર:</span>
-                  <select
-                    className="glass-input"
-                    style={{ width: '160px', padding: '6px 12px' }}
-                    value={sevaMemberTypeFilter}
-                    onChange={(e) => setSevaMemberTypeFilter(e.target.value)}
-                  >
-                    <option value="all" style={{ background: '#111827' }}>બધા પ્રકારો</option>
-                    <option value="kisori" style={{ background: '#111827' }}>કિશોરી</option>
-                    <option value="yuvti" style={{ background: '#111827' }}>યુવતી</option>
-                    <option value="prutha" style={{ background: '#111827' }}>પ્રૌઢા</option>
-                    <option value="vadil" style={{ background: '#111827' }}>વડીલ</option>
-                  </select>
-                </div>
+                <select
+                  className="glass-input"
+                  style={{ width: 180, flex: '0 0 auto' }}
+                  value={sevaMemberTypeFilter}
+                  onChange={(e) => setSevaMemberTypeFilter(e.target.value)}
+                  aria-label="સેવા સભ્ય પ્રકાર ફિલ્ટર"
+                >
+                  <option value="all">બધા પ્રકારો</option>
+                  <option value="kisori">કિશોરી</option>
+                  <option value="yuvti">યુવતી</option>
+                  <option value="prutha">પ્રૌઢા</option>
+                  <option value="vadil">વડીલ</option>
+                </select>
               </div>
 
               {/* Members Table */}
               {loadingSevaMembers ? (
                 <SkeletonText rows={8} />
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <div className="table-wrap">
+                  <table>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)' }}>
-                        <th style={{ padding: 12, fontSize: '0.85rem' }}>ક્રમ</th>
-                        <th style={{ padding: 12, fontSize: '0.85rem' }}>કોડ</th>
-                        <th style={{ padding: 12, fontSize: '0.85rem' }}>સભ્યનું નામ</th>
-                        <th style={{ padding: 12, fontSize: '0.85rem' }}>પ્રકાર</th>
-                        <th style={{ padding: 12, fontSize: '0.85rem', textAlign: 'right' }}>ક્રિયાઓ</th>
+                      <tr>
+                        <th>ક્રમ</th>
+                        <th>કોડ</th>
+                        <th>સભ્યનું નામ</th>
+                        <th>પ્રકાર</th>
+                        <th style={{ textAlign: 'right' }}>ક્રિયાઓ</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2703,16 +2894,19 @@ function AppContent() {
                           return matchesSearch && matchesType;
                         })
                         .map((m, idx) => (
-                          <tr key={m._id} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                            <td style={{ padding: 12, fontSize: '0.9rem' }}>{idx + 1}</td>
-                            <td style={{ padding: 12, fontSize: '0.9rem', fontWeight: 600, fontFamily: 'monospace' }}>{m.uniqueCode}</td>
-                            <td style={{ padding: 12, fontSize: '0.9rem', fontWeight: 700 }}>{m.name}</td>
-                            <td style={{ padding: 12, fontSize: '0.85rem' }}>{SEVA_CATEGORY_TAGS[m.type] || m.type}</td>
-                            <td style={{ padding: 12, textAlign: 'right' }}>
-                              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                          <tr key={m._id}>
+                            <td style={{ color: 'var(--color-text-secondary)' }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 600, fontFamily: 'monospace' }}>{m.uniqueCode}</td>
+                            <td style={{ fontWeight: 600 }}>{m.name}</td>
+                            <td>
+                              <span className="badge badge-primary">{SEVA_CATEGORY_TAGS[m.type] || m.type}</span>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                                 <button
-                                  className="btn-secondary"
-                                  style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                  className="icon-btn"
+                                  title="સુધારો"
+                                  aria-label={`${m.name} સુધારો`}
                                   onClick={() => {
                                     setEditingSevaMember(m);
                                     setSevaMemberName(m.name);
@@ -2721,14 +2915,15 @@ function AppContent() {
                                     setShowSevaMemberModal(true);
                                   }}
                                 >
-                                  <Edit size={12} /> સુધારો
+                                  <Edit size={15} />
                                 </button>
                                 <button
-                                  className="btn-danger"
-                                  style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                                  className="icon-btn icon-btn-danger"
+                                  title="કાઢી નાખો"
+                                  aria-label={`${m.name} કાઢી નાખો`}
                                   onClick={() => handleDeleteSevaMember(m._id)}
                                 >
-                                  <Trash2 size={12} /> કાઢી નાખો
+                                  <Trash2 size={15} />
                                 </button>
                               </div>
                             </td>
@@ -2812,12 +3007,12 @@ function AppContent() {
                   {/* Left list of members */}
                   <div className="glass-panel" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>સભ્ય સેવા અહેવાલ</h3>
-                    <div style={{ position: 'relative' }}>
-                      <Search style={{ position: 'absolute', left: 12, top: 12, color: 'var(--color-text-muted)' }} size={16} />
+                    <div className="search-field">
+                      <Search className="search-icon" size={16} />
                       <input
                         type="text"
                         className="glass-input"
-                        style={{ paddingLeft: 36, fontSize: '0.9rem' }}
+                        style={{ fontSize: '0.9rem' }}
                         placeholder="સભ્ય શોધો..."
                         value={sevaMemberReportSearch}
                         onChange={(e) => setSevaMemberReportSearch(e.target.value)}
@@ -2859,18 +3054,18 @@ function AppContent() {
                       <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                           <div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '3px 8px', borderRadius: 8, background: 'rgba(99, 102, 241, 0.15)', color: 'var(--color-primary)' }}>
+                            <span className="badge badge-primary">
                               {SEVA_CATEGORY_LABELS[selectedSevaMemberReport.member.type]}
                             </span>
-                            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6 }}>{selectedSevaMemberReport.member.name}</h2>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: 6, letterSpacing: '-0.01em' }}>{selectedSevaMemberReport.member.name}</h2>
                             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                               યુનિક આઈડી કોડ: {selectedSevaMemberReport.member.uniqueCode}
                             </p>
                           </div>
 
-                          <div style={{ textalign: 'right' }}>
+                          <div style={{ textAlign: 'right' }}>
                             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>કુલ સેવા કલાકો</p>
-                            <p style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--color-success)', marginTop: 2 }}>
+                            <p style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--color-success)', marginTop: 2 }}>
                               {selectedSevaMemberReport.stats.totalHours}
                             </p>
                           </div>
@@ -2898,33 +3093,27 @@ function AppContent() {
                           {selectedSevaMemberReport.history.length === 0 ? (
                             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>આ સભ્યનો કોઈ સેવાનો ઇતિહાસ નોંધાયેલ નથી.</p>
                           ) : (
-                            <div style={{ overflowX: 'auto', maxHeight: '250px', overflowY: 'auto' }}>
-                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                            <div className="table-wrap" style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                              <table>
                                 <thead>
-                                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)', textAlign: 'left' }}>
-                                    <th style={{ padding: 8 }}>તારીખ</th>
-                                    <th style={{ padding: 8 }}>સેવા પ્રકાર</th>
-                                    <th style={{ padding: 8, textAlign: 'center' }}>સ્થિતિ</th>
-                                    <th style={{ padding: 8, textAlign: 'right' }}>લોગ કરેલ કલાક</th>
+                                  <tr>
+                                    <th>તારીખ</th>
+                                    <th>સેવા પ્રકાર</th>
+                                    <th style={{ textAlign: 'center' }}>સ્થિતિ</th>
+                                    <th style={{ textAlign: 'right' }}>લોગ કરેલ કલાક</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {selectedSevaMemberReport.history.map((log, idx) => (
-                                    <tr key={idx} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                                      <td style={{ padding: 8 }}>{new Date(log.date).toLocaleDateString('gu-IN')}</td>
-                                      <td style={{ padding: 8, fontWeight: 600 }}>{log.sevaType}</td>
-                                      <td style={{ padding: 8, textAlign: 'center' }}>
-                                        <span style={{
-                                          padding: '2px 6px',
-                                          borderRadius: 4,
-                                          fontSize: '0.7rem',
-                                          background: log.status === 'present' ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-                                          color: log.status === 'present' ? 'var(--color-success)' : 'var(--color-danger)'
-                                        }}>
+                                    <tr key={idx}>
+                                      <td>{new Date(log.date).toLocaleDateString('gu-IN')}</td>
+                                      <td style={{ fontWeight: 600 }}>{log.sevaType}</td>
+                                      <td style={{ textAlign: 'center' }}>
+                                        <span className={`badge ${log.status === 'present' ? 'badge-success' : 'badge-danger'}`}>
                                           {log.status === 'present' ? 'હાજર' : 'ગેરહાજર'}
                                         </span>
                                       </td>
-                                      <td style={{ padding: 8, textAlign: 'right', fontWeight: 700 }}>
+                                      <td style={{ textAlign: 'right', fontWeight: 700 }}>
                                         {log.status === 'present' ? `${log.hours} કલાક` : '-'}
                                       </td>
                                     </tr>
@@ -2936,9 +3125,12 @@ function AppContent() {
                         </div>
                       </div>
                     ) : (
-                      <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--color-text-muted)' }}>
-                        <TrendingUp size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
-                        <p>ડાબી બાજુની લિસ્ટમાંથી કોઈપણ સભ્ય પસંદ કરો</p>
+                      <div className="empty-state">
+                        <div className="empty-state-icon">
+                          <TrendingUp size={28} />
+                        </div>
+                        <p className="empty-state-title">કોઈ સભ્ય પસંદ કરેલ નથી</p>
+                        <p className="empty-state-desc" style={{ marginBottom: 0 }}>ડાબી બાજુની યાદીમાંથી સભ્ય પસંદ કરવાથી તેમનો સેવા અહેવાલ અહીં દેખાશે.</p>
                       </div>
                     )}
                   </div>
@@ -2960,10 +3152,10 @@ function AppContent() {
 
                 return (
                   <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                    <div className="panel-header">
                       <div>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>સેવા પ્રકાર વાઈઝ શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦)</h3>
-                        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>સેવા પ્રકાર મુજબ શ્રેષ્ઠ સેવા આપનાર ૧૦ સભ્યો</p>
+                        <h3 className="panel-title">સેવા પ્રકાર વાઈઝ શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦)</h3>
+                        <p className="panel-subtitle">સેવા પ્રકાર મુજબ શ્રેષ્ઠ સેવા આપનાર ૧૦ સભ્યો</p>
                       </div>
                       <button
                         className="btn-primary"
@@ -2977,7 +3169,13 @@ function AppContent() {
                     {loadingSevaTypeLeaderboard ? (
                       <SkeletonText rows={8} />
                     ) : typeNames.length === 0 ? (
-                      <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '24px 0' }}>કોઈ સેવા રેકોર્ડ ઉપલબ્ધ નથી.</p>
+                      <div className="empty-state" style={{ padding: '36px 20px' }}>
+                        <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                          <Heart size={22} />
+                        </div>
+                        <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>કોઈ સેવા રેકોર્ડ ઉપલબ્ધ નથી</p>
+                        <p className="empty-state-desc" style={{ marginBottom: 0 }}>સેવા હાજરી સાચવ્યા બાદ અહીં અહેવાલ દેખાશે.</p>
+                      </div>
                     ) : (
                       <div className="grid-2" style={{ gap: 24 }}>
                         {typeNames.map((typeName, index) => {
@@ -2988,24 +3186,24 @@ function AppContent() {
                               <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: headerColor, borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
                                 {typeName}: શ્રેષ્ઠ ૧૦ સેવાકર્તા
                               </h4>
-                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                              <table className="mini-table">
                                 <thead>
-                                  <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)' }}>
-                                    <th style={{ padding: '8px 4px', textAlign: 'left', width: '10%' }}>ક્રમ</th>
-                                    <th style={{ padding: '8px 4px', textAlign: 'left', width: '45%' }}>નામ</th>
-                                    <th style={{ padding: '8px 4px', textAlign: 'left', width: '20%' }}>કોડ</th>
-                                    <th style={{ padding: '8px 4px', textAlign: 'center', width: '25%' }}>કુલ સેવા</th>
-                                    <th style={{ padding: '8px 4px', textAlign: 'right', width: '25%' }}>કુલ કલાક</th>
+                                  <tr>
+                                    <th style={{ textAlign: 'left', width: '10%' }}>ક્રમ</th>
+                                    <th style={{ textAlign: 'left', width: '35%' }}>નામ</th>
+                                    <th style={{ textAlign: 'left', width: '15%' }}>કોડ</th>
+                                    <th style={{ textAlign: 'center', width: '20%' }}>કુલ સેવા</th>
+                                    <th style={{ textAlign: 'right', width: '20%' }}>કુલ કલાક</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {list.map((item, idx) => (
-                                    <tr key={idx} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                                      <td style={{ padding: '8px 4px' }}>{idx + 1}</td>
-                                      <td style={{ padding: '8px 4px', fontWeight: 600 }}>{item.name}</td>
-                                      <td style={{ padding: '8px 4px', fontFamily: 'monospace' }}>{item.uniqueCode}</td>
-                                      <td style={{ padding: '8px 4px', textAlign: 'center' }}>{item.sevaCount} વખત</td>
-                                      <td style={{ padding: '8px 4px', textAlign: 'right', color: 'var(--color-success)', fontWeight: 700 }}>{item.totalHours} કલાક</td>
+                                    <tr key={idx}>
+                                      <td>{idx + 1}</td>
+                                      <td style={{ fontWeight: 600 }}>{item.name}</td>
+                                      <td style={{ fontFamily: 'monospace' }}>{item.uniqueCode}</td>
+                                      <td style={{ textAlign: 'center' }}>{item.sevaCount} વખત</td>
+                                      <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 700 }}>{item.totalHours} કલાક</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -3022,10 +3220,10 @@ function AppContent() {
               {/* Seva Sub Tab 3: Particular Seva Report */}
               {sevaReportsSubTab === 'particular' && (
                 <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                  <div className="panel-header">
                     <div>
-                      <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>વિશિષ્ટ સેવા વિગતવાર રિપોર્ટ</h3>
-                      <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>ચોક્કસ સેવા તારીખનો સંપૂર્ણ અહેવાલ મેળવો</p>
+                      <h3 className="panel-title">વિશિષ્ટ સેવા વિગતવાર રિપોર્ટ</h3>
+                      <p className="panel-subtitle">ચોક્કસ સેવા તારીખનો સંપૂર્ણ અહેવાલ મેળવો</p>
                     </div>
                     {particularSevaReport && (
                       <button
@@ -3038,16 +3236,15 @@ function AppContent() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 8, fontWeight: 500 }}>અહેવાલ માટે સેવા પસંદ કરો:</label>
+                    <label className="form-label">અહેવાલ માટે સેવા પસંદ કરો:</label>
                     <select
                       className="glass-input"
                       value={selectedParticularSevaId}
                       onChange={(e) => setSelectedParticularSevaId(e.target.value)}
-                      style={{ cursor: 'pointer' }}
                     >
-                      <option value="" style={{ background: '#111827' }}>-- સેવા પસંદ કરો (તારીખ અને પ્રકાર) --</option>
+                      <option value="">-- સેવા પસંદ કરો (તારીખ અને પ્રકાર) --</option>
                       {sevas.map(seva => (
-                        <option key={seva._id} value={seva._id} style={{ background: '#111827' }}>
+                        <option key={seva._id} value={seva._id}>
                           {new Date(seva.date).toLocaleDateString('gu-IN', { year: 'numeric', month: 'long', day: 'numeric' })} - {seva.sevaType ? seva.sevaType.name : 'અજ્ઞાત'} {seva.leader ? `(${seva.leader})` : ''}
                         </option>
                       ))}
@@ -3092,45 +3289,39 @@ function AppContent() {
 
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div style={{ display: 'flex', gap: 16, fontSize: '0.85rem', flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8 }}>
-                          <span>હાજર સભ્યો: {combinedList.filter(m => m.status === 'present').length}</span>
-                          <span>ગેરહાજર સભ્યો: {combinedList.filter(m => m.status === 'absent').length}</span>
-                          <span>કુલ લોગ થયેલ કલાક: {combinedList.reduce((sum, item) => sum + item.hours, 0)} કલાક</span>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <span className="badge badge-success">હાજર સભ્યો: {combinedList.filter(m => m.status === 'present').length}</span>
+                          <span className="badge badge-danger">ગેરહાજર સભ્યો: {combinedList.filter(m => m.status === 'absent').length}</span>
+                          <span className="badge badge-info">કુલ લોગ થયેલ કલાક: {combinedList.reduce((sum, item) => sum + item.hours, 0)} કલાક</span>
                         </div>
 
-                        <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                        <div className="table-wrap" style={{ maxHeight: '440px', overflowY: 'auto' }}>
+                          <table>
                             <thead>
-                              <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--color-text-secondary)', textAlign: 'left' }}>
-                                <th style={{ padding: 12 }}>ક્રમ</th>
-                                <th style={{ padding: 12 }}>નામ</th>
-                                <th style={{ padding: 12 }}>કોડ</th>
-                                <th style={{ padding: 12 }}>પ્રકાર</th>
-                                <th style={{ padding: 12, textAlign: 'center' }}>સ્થિતિ</th>
-                                <th style={{ padding: 12, textAlign: 'right' }}>લોગ કરેલ સેવા કલાક</th>
+                              <tr>
+                                <th>ક્રમ</th>
+                                <th>નામ</th>
+                                <th>કોડ</th>
+                                <th>પ્રકાર</th>
+                                <th style={{ textAlign: 'center' }}>સ્થિતિ</th>
+                                <th style={{ textAlign: 'right' }}>લોગ કરેલ સેવા કલાક</th>
                               </tr>
                             </thead>
                             <tbody>
                               {combinedList.map((m, idx) => {
                                 const isPresent = m.status === 'present';
                                 return (
-                                  <tr key={m._id} style={{ borderBottom: '1px dashed rgba(255,255,255,0.05)' }}>
-                                    <td style={{ padding: 12 }}>{idx + 1}</td>
-                                    <td style={{ padding: 12, fontWeight: 700 }}>{m.name}</td>
-                                    <td style={{ padding: 12, fontFamily: 'monospace' }}>{m.uniqueCode}</td>
-                                    <td style={{ padding: 12 }}>{SEVA_CATEGORY_TAGS[m.type] || m.type}</td>
-                                    <td style={{ padding: 12, textAlign: 'center' }}>
-                                      <span style={{
-                                        padding: '2px 8px',
-                                        borderRadius: 6,
-                                        fontSize: '0.75rem',
-                                        background: isPresent ? 'rgba(16,185,129,0.15)' : 'rgba(244,63,94,0.15)',
-                                        color: isPresent ? 'var(--color-success)' : 'var(--color-danger)'
-                                      }}>
+                                  <tr key={m._id}>
+                                    <td style={{ color: 'var(--color-text-secondary)' }}>{idx + 1}</td>
+                                    <td style={{ fontWeight: 600 }}>{m.name}</td>
+                                    <td style={{ fontFamily: 'monospace' }}>{m.uniqueCode}</td>
+                                    <td>{SEVA_CATEGORY_TAGS[m.type] || m.type}</td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <span className={`badge ${isPresent ? 'badge-success' : 'badge-danger'}`}>
                                         {isPresent ? 'હાજર' : 'ગેરહાજર'}
                                       </span>
                                     </td>
-                                    <td style={{ padding: 12, textAlign: 'right', fontWeight: 700 }}>
+                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
                                       {isPresent ? `${m.hours} કલાક` : '-'}
                                     </td>
                                   </tr>
@@ -3142,9 +3333,13 @@ function AppContent() {
                       </div>
                     );
                   })() : (
-                    <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '40px 0' }}>
-                      અહેવાલ માટે સેવા પસંદ કરો
-                    </p>
+                    <div className="empty-state" style={{ padding: '36px 20px' }}>
+                      <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
+                        <Heart size={22} />
+                      </div>
+                      <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>અહેવાલ માટે સેવા પસંદ કરો</p>
+                      <p className="empty-state-desc" style={{ marginBottom: 0 }}>ઉપરના ડ્રોપડાઉનમાંથી સેવા પસંદ કરવાથી સંપૂર્ણ અહેવાલ અહીં દેખાશે.</p>
+                    </div>
                   )}
                 </div>
               )}
@@ -3157,22 +3352,16 @@ function AppContent() {
       {/* --- MODAL FOR ADD/EDIT SEVA MEMBER --- */}
       {
         showSevaMemberModal && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 450, width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+          <div className="modal-overlay" role="dialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 450 }}>
+              <div className="modal-header">
+                <h3 className="modal-title">
                   {editingSevaMember ? 'સેવા સભ્ય વિગતો સુધારો' : 'નવો સેવા સભ્ય ઉમેરો'}
                 </h3>
                 <button
+                  className="icon-btn"
                   onClick={() => setShowSevaMemberModal(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  aria-label="બંધ કરો"
                 >
                   <X size={20} />
                 </button>
@@ -3180,7 +3369,7 @@ function AppContent() {
 
               <form onSubmit={handleSaveSevaMember} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>નામ (Name)</label>
+                  <label className="form-label">નામ (Name)</label>
                   <input
                     type="text"
                     className="glass-input"
@@ -3192,7 +3381,7 @@ function AppContent() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>પ્રકાર (Gender Category)</label>
+                  <label className="form-label">પ્રકાર (Gender Category)</label>
                   <select
                     className="glass-input"
                     value={sevaMemberType}
@@ -3207,7 +3396,7 @@ function AppContent() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>યુનિક આઈડી કોડ (Unique ID Code)</label>
+                  <label className="form-label">યુનિક આઈડી કોડ (Unique ID Code)</label>
                   <input
                     type="text"
                     className="glass-input"
@@ -3218,9 +3407,12 @@ function AppContent() {
                   />
                 </div>
 
-                <button type="submit" className="btn-primary" disabled={submittingSevaMember} style={{ marginTop: 8 }}>
-                  {submittingSevaMember ? <SpinnerLoader size={20} /> : 'સાચવો'}
-                </button>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                  <button type="button" className="btn-secondary" onClick={() => setShowSevaMemberModal(false)}>રદ કરો</button>
+                  <button type="submit" className="btn-primary" disabled={submittingSevaMember}>
+                    {submittingSevaMember ? <SpinnerLoader size={20} /> : 'સાચવો'}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
@@ -3230,27 +3422,21 @@ function AppContent() {
       {/* --- MODAL FOR BULK IMPORT SEVA MEMBERS --- */}
       {
         showBulkSevaMemberModal && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 650, width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>સેવા સભ્યો બલ્ક કોપી-પેસ્ટ અપલોડ</h3>
+          <div className="modal-overlay" role="dialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 650, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div className="modal-header" style={{ marginBottom: 0 }}>
+                <h3 className="modal-title">સેવા સભ્યો બલ્ક કોપી-પેસ્ટ અપલોડ</h3>
                 <button
+                  className="icon-btn"
                   onClick={() => setShowBulkSevaMemberModal(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  aria-label="બંધ કરો"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="alert alert-info" style={{ background: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid var(--color-primary)', padding: 12, borderRadius: 6 }}>
-                <p style={{ fontSize: '0.8rem', lineHeight: '1.4', color: 'var(--color-text-secondary)' }}>
+              <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)' }}>
+                <p style={{ fontSize: '0.8rem', lineHeight: '1.6', color: 'var(--color-text-secondary)' }}>
                   <strong>નિયમો અને ફોર્મેટ:</strong><br />
                   ૧. દરેક લાઈનમાં એક સભ્યની માહિતી હોવી જોઈએ.<br />
                   ૨. માહિતીનો ક્રમ: <strong>નામ, પ્રકાર, યુનિક કોડ</strong> (અલ્પવિરામ <code>,</code> થી અલગ કરેલ).<br />
@@ -3276,9 +3462,7 @@ function AppContent() {
                     <span>અપલોડ થઈ રહ્યું છે...</span>
                     <span>{bulkSevaMemberImportProgress}%</span>
                   </div>
-                  <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${bulkSevaMemberImportProgress}%`, height: '100%', background: 'var(--color-primary)', transition: 'width 0.3s ease' }} />
-                  </div>
+                  <DeterminateProgress value={bulkSevaMemberImportProgress} />
                 </div>
               )}
 
@@ -3324,22 +3508,16 @@ function AppContent() {
       {/* --- MODAL 1: ADD/EDIT MEMBER --- */}
       {
         showMemberModal && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 450, width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+          <div className="modal-overlay" role="dialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 450 }}>
+              <div className="modal-header">
+                <h3 className="modal-title">
                   {editingMember ? 'સભ્ય વિગતો સુધારો' : 'નવો સભ્ય ઉમેરો'}
                 </h3>
                 <button
+                  className="icon-btn"
                   onClick={() => setShowMemberModal(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  aria-label="બંધ કરો"
                 >
                   <X size={20} />
                 </button>
@@ -3347,7 +3525,7 @@ function AppContent() {
 
               <form onSubmit={handleSaveMember} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>નામ (Name)</label>
+                  <label className="form-label">નામ (Name)</label>
                   <input
                     type="text"
                     className="glass-input"
@@ -3359,21 +3537,21 @@ function AppContent() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>સભા સભ્ય પ્રકાર</label>
+                  <label className="form-label">સભા સભ્ય પ્રકાર</label>
                   <select
                     className="glass-input"
                     value={memberType}
                     onChange={(e) => setMemberType(e.target.value)}
                   >
-                    <option value="kishor" style={{ background: '#111827' }}>કિશોર (૧૫-૨૨)</option>
-                    <option value="yuva" style={{ background: '#111827' }}>યુવા (૨૨-૪૦)</option>
-                    <option value="proudh" style={{ background: '#111827' }}>પ્રૌઢ (૪૦-૬૦)</option>
-                    <option value="vadil" style={{ background: '#111827' }}>વડીલ (૬૦+)</option>
+                    <option value="kishor">કિશોર (૧૫-૨૨)</option>
+                    <option value="yuva">યુવા (૨૨-૪૦)</option>
+                    <option value="proudh">પ્રૌઢ (૪૦-૬૦)</option>
+                    <option value="vadil">વડીલ (૬૦+)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>યુનિક આઈડી કોડ (Unique Code)</label>
+                  <label className="form-label">યુનિક આઈડી કોડ (Unique Code)</label>
                   <input
                     type="text"
                     className="glass-input"
@@ -3399,29 +3577,23 @@ function AppContent() {
       {/* --- MODAL 2: BULK UPLOAD MEMBERS --- */}
       {
         showBulkModal && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 550, width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+          <div className="modal-overlay" role="dialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 550 }}>
+              <div className="modal-header" style={{ marginBottom: 16 }}>
+                <h3 className="modal-title">
                   એકસાથે સભ્યો ઉમેરો (બલ્ક અપલોડ)
                 </h3>
                 <button
+                  className="icon-btn"
                   onClick={() => setShowBulkModal(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  aria-label="બંધ કરો"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div style={{ marginBottom: 14 }}>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
+              <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 14 }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                   <strong>ફોર્મેટ સૂચના:</strong> નીચેના બોક્સમાં દરેક લાઈનમાં એક સભ્યની વિગત આ ક્રમમાં લખો: <br />
                   <code style={{ background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, display: 'inline-block', margin: '4px 0', fontFamily: 'monospace' }}>નામ, પ્રકાર, યુનિક કોડ</code> <br />
                   પ્રકારમાં માત્ર <strong>kishor, yuva, proudh, vadil</strong> માંથી જ લખવું. <br />
@@ -3493,22 +3665,16 @@ function AppContent() {
       {/* --- MODAL 3: CREATE/EDIT EVENT --- */}
       {
         showEventModal && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 450, width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+          <div className="modal-overlay" role="dialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 450 }}>
+              <div className="modal-header">
+                <h3 className="modal-title">
                   {editingEventId ? 'સભા વિગતો સુધારો' : 'નવી સભા આયોજિત કરો'}
                 </h3>
                 <button
+                  className="icon-btn"
                   onClick={() => setShowEventModal(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  aria-label="બંધ કરો"
                 >
                   <X size={20} />
                 </button>
@@ -3516,7 +3682,7 @@ function AppContent() {
 
               <form onSubmit={handleSaveEvent} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>સભાની તારીખ (Date)</label>
+                  <label className="form-label">સભાની તારીખ (Date)</label>
                   <input
                     type="date"
                     className="glass-input"
@@ -3527,20 +3693,20 @@ function AppContent() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>સભા પ્રકાર (Type)</label>
+                  <label className="form-label">સભા પ્રકાર (Type)</label>
                   <select
                     className="glass-input"
                     value={eventType}
                     onChange={(e) => setEventType(e.target.value)}
                   >
-                    <option value="savar_ni_katha" style={{ background: '#111827' }}>સવારની કથા</option>
-                    <option value="ravi_sabha" style={{ background: '#111827' }}>રવિસભા</option>
+                    <option value="savar_ni_katha">સવારની કથા</option>
+                    <option value="ravi_sabha">રવિસભા</option>
                   </select>
                 </div>
 
                 {eventType === 'ravi_sabha' && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>
+                    <label className="form-label">
                       પહોંચવાનો સમય મર્યાદા (Deadline Reach Time)
                     </label>
                     <div style={{ display: 'flex', gap: 10 }}>
@@ -3561,11 +3727,11 @@ function AppContent() {
                         value={eventMinReachTimePeriod}
                         onChange={(e) => setEventMinReachTimePeriod(e.target.value)}
                       >
-                        <option value="AM" style={{ background: '#111827' }}>AM</option>
-                        <option value="PM" style={{ background: '#111827' }}>PM</option>
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
                       </select>
                     </div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'block', marginTop: 4 }}>
+                    <span className="form-hint">
                       આ સમય પછી હાજરી પૂરનાર સભ્યોને મોડા (Late) ગણવામાં આવશે અને નોંધ (Remark) પૂછવામાં આવશે. (૧૨ કલાક ફોર્મેટ, ઉદા. 10:00 PM)
                     </span>
                   </div>
@@ -3586,21 +3752,14 @@ function AppContent() {
       {/* --- MODAL 4: CONFIRM EVENT DELETE --- */}
       {
         eventToDelete && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 400, width: '100%', textAlign: 'center' }}>
-              <div style={{ background: 'rgba(244, 63, 94, 0.1)', padding: 16, borderRadius: '50%', display: 'inline-flex', marginBottom: 16 }}>
+          <div className="modal-overlay modal-overlay-top" role="alertdialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 400, textAlign: 'center' }}>
+              <div style={{ background: 'var(--tint-danger)', padding: 16, borderRadius: '50%', display: 'inline-flex', marginBottom: 16 }}>
                 <AlertTriangle size={32} color="var(--color-danger)" />
               </div>
 
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 12 }}>શું તમે ખાતરીપૂર્વક સભા રદ કરવા માંગો છો?</h3>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.4 }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 12 }}>શું તમે ખાતરીપૂર્વક સભા રદ કરવા માંગો છો?</h3>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.6 }}>
                 આ સભા રદ કરવાથી તેના સંકળાયેલા તમામ સભ્યોના હાજરી રેકોર્ડ કાયમ માટે રદ થઈ જશે. આ ક્રિયા પાછી વાળી શકાશે નહીં.
               </p>
 
@@ -3616,20 +3775,14 @@ function AppContent() {
       {/* --- MODAL 5: CREATE SEVA --- */}
       {
         showSevaModal && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 450, width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>નવી સેવા આયોજિત કરો</h3>
+          <div className="modal-overlay" role="dialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 450 }}>
+              <div className="modal-header">
+                <h3 className="modal-title">નવી સેવા આયોજિત કરો</h3>
                 <button
+                  className="icon-btn"
                   onClick={() => setShowSevaModal(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  aria-label="બંધ કરો"
                 >
                   <X size={20} />
                 </button>
@@ -3637,7 +3790,7 @@ function AppContent() {
 
               <form onSubmit={handleCreateSeva} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>સેવાની તારીખ (Date)</label>
+                  <label className="form-label">સેવાની તારીખ (Date)</label>
                   <input
                     type="date"
                     className="glass-input"
@@ -3648,16 +3801,16 @@ function AppContent() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>સેવાનો પ્રકાર (Seva Type)</label>
+                  <label className="form-label">સેવાનો પ્રકાર (Seva Type)</label>
                   <select
                     className="glass-input"
                     value={sevaTypeId}
                     onChange={(e) => setSevaTypeId(e.target.value)}
                     required
                   >
-                    <option value="" style={{ background: '#111827' }}>-- સેવાનો પ્રકાર પસંદ કરો --</option>
+                    <option value="">-- સેવાનો પ્રકાર પસંદ કરો --</option>
                     {sevaTypes.map(t => (
-                      <option key={t._id} value={t._id} style={{ background: '#111827' }}>{t.name}</option>
+                      <option key={t._id} value={t._id}>{t.name}</option>
                     ))}
                     <option value="new_type" style={{ background: '#111827', fontWeight: 'bold', color: 'var(--color-primary)' }}>+ નવો પ્રકાર ઉમેરો...</option>
                   </select>
@@ -3665,7 +3818,7 @@ function AppContent() {
 
                 {sevaTypeId === 'new_type' && (
                   <div className="animate-fade-in">
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>નવા સેવાનો પ્રકાર લખો (New Seva Type Name)</label>
+                    <label className="form-label">નવા સેવાનો પ્રકાર લખો (New Seva Type Name)</label>
                     <input
                       type="text"
                       className="glass-input"
@@ -3678,7 +3831,7 @@ function AppContent() {
                 )}
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 6, fontWeight: 500 }}>સેવા લીડરનું નામ (Leader - Optional)</label>
+                  <label className="form-label">સેવા લીડરનું નામ (Leader - Optional)</label>
                   <input
                     type="text"
                     className="glass-input"
@@ -3703,20 +3856,14 @@ function AppContent() {
       {/* --- MODAL 6: SEVA TYPES SETTINGS --- */}
       {
         showSevaTypeModal && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999,
-              padding: 16
-            }}
-          >
-            <div className="glass-panel animate-fade-in" style={{ padding: 24, maxWidth: 500, width: '100%' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>સેવા પ્રકાર વ્યવस्थाપન</h3>
+          <div className="modal-overlay" role="dialog" aria-modal="true">
+            <div className="modal-panel" style={{ maxWidth: 500 }}>
+              <div className="modal-header">
+                <h3 className="modal-title">સેવા પ્રકાર વ્યવસ્થાપન</h3>
                 <button
+                  className="icon-btn"
                   onClick={() => setShowSevaTypeModal(false)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+                  aria-label="બંધ કરો"
                 >
                   <X size={20} />
                 </button>
@@ -3745,23 +3892,22 @@ function AppContent() {
                   sevaTypes.map(t => (
                     <div
                       key={t._id}
+                      className="glass-card"
                       style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        background: 'rgba(255,255,255,0.02)',
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        border: '1px solid rgba(255,255,255,0.04)'
+                        padding: '8px 8px 8px 14px'
                       }}
                     >
                       <span style={{ fontSize: '0.9rem' }}>{t.name}</span>
                       <button
                         type="button"
+                        className="icon-btn icon-btn-danger"
                         onClick={() => handleDeleteSevaType(t._id)}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer' }}
+                        aria-label={`${t.name} કાઢી નાખો`}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   ))
@@ -3775,6 +3921,23 @@ function AppContent() {
           </div>
         )
       }
+
+      {/* --- MOBILE BOTTOM NAVIGATION --- */}
+      {visibleNavItems.length > 1 && (
+        <nav className="bottom-nav" aria-label="મુખ્ય નેવિગેશન">
+          {visibleNavItems.map(item => (
+            <button
+              key={item.key}
+              className={`bottom-nav-item ${activeTab === item.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.key)}
+              aria-current={activeTab === item.key ? 'page' : undefined}
+            >
+              <item.icon size={20} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {/* --- PRINT CONTAINER --- */}
       <div className="print-container">
