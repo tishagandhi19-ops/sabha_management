@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Users,
   Calendar,
@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useAttendanceDraft } from './hooks/useAttendanceDraft';
 import {
   SpinnerLoader,
   LinearProgress,
@@ -150,6 +151,41 @@ function AppContent() {
   const [attendanceSearch, setAttendanceSearch] = useState('');
   const [displayMembers, setDisplayMembers] = useState([]);
   const [eventToDelete, setEventToDelete] = useState(null);
+
+  // Refs to ensure auto-save ONLY saves when attendanceRecords belongs to the currently loaded event and differs from DB
+  const loadedEventIdRef = useRef(null);
+  const loadedSevaIdRef = useRef(null);
+  const dbSabhaRecordsRef = useRef({});
+  const dbSevaRecordsRef = useRef({});
+
+  // Local Draft Persistence Hooks (Sparse Delta)
+  const {
+    hasDraft: hasSabhaDraft,
+    draftCount: sabhaDraftCount,
+    saveDraft: saveSabhaDraft,
+    clearDraft: clearSabhaDraft
+  } = useAttendanceDraft('sabha', selectedEventId);
+
+  const {
+    hasDraft: hasSevaDraft,
+    draftCount: sevaDraftCount,
+    saveDraft: saveSevaDraft,
+    clearDraft: clearSevaDraft
+  } = useAttendanceDraft('seva', selectedSevaId);
+
+  // Auto-save Sabha attendance draft ONLY if records differ from DB baseline state
+  useEffect(() => {
+    if (selectedEventId && loadedEventIdRef.current === selectedEventId && Object.keys(attendanceRecords).length > 0) {
+      saveSabhaDraft(attendanceRecords, dbSabhaRecordsRef.current);
+    }
+  }, [attendanceRecords, selectedEventId, saveSabhaDraft]);
+
+  // Auto-save Seva attendance draft ONLY if records differ from DB baseline state
+  useEffect(() => {
+    if (selectedSevaId && loadedSevaIdRef.current === selectedSevaId && Object.keys(sevaAttendanceRecords).length > 0) {
+      saveSevaDraft(sevaAttendanceRecords, dbSevaRecordsRef.current);
+    }
+  }, [sevaAttendanceRecords, selectedSevaId, saveSevaDraft]);
 
   // Reports new states
   const [reportsSubTab, setReportsSubTab] = useState('profile'); // 'profile' | 'leaderboard' | 'particular'
@@ -530,6 +566,7 @@ function AppContent() {
 
   // Load a Seva for attendance marking
   const loadSevaAttendance = async (sevaId) => {
+    loadedSevaIdRef.current = null;
     setSelectedSevaId(sevaId);
     try {
       const data = await apiRequest(`/api/sevas/${sevaId}`);
@@ -557,10 +594,35 @@ function AppContent() {
         }
       });
 
+      // Store baseline DB records before applying any local draft overlays
+      dbSevaRecordsRef.current = JSON.parse(JSON.stringify(recordsMap));
+
+      // Check if local draft exists in localStorage
+      const storedDraft = localStorage.getItem(`seva_draft_${sevaId}`);
+      if (storedDraft) {
+        try {
+          const parsedDraft = JSON.parse(storedDraft);
+          Object.assign(recordsMap, parsedDraft);
+          triggerNotification('અણસાચવેલ સેવા હાજરી ડ્રાફ્ટ લોડ થયો છે');
+        } catch (e) {
+          console.error('Error parsing seva draft', e);
+        }
+      }
+
       setSevaAttendanceRecords(recordsMap);
+      loadedSevaIdRef.current = sevaId;
     } catch (err) {
       triggerNotification(err.message, 'error');
     }
+  };
+
+  const handleDiscardSevaDraft = () => {
+    if (!selectedSevaId) return;
+    if (!window.confirm('શું તમે ખરેખર સેવા અણસાચવેલ ડ્રાફ્ટ કાઢી નાખવા માંગો છો?')) return;
+    clearSevaDraft();
+    localStorage.removeItem(`seva_draft_${selectedSevaId}`);
+    loadSevaAttendance(selectedSevaId);
+    triggerNotification('સેવા ડ્રાફ્ટ રદ કરવામાં આવ્યો છે', 'info');
   };
 
   // Toggle present/absent for a member in Seva
@@ -607,6 +669,9 @@ function AppContent() {
         body: JSON.stringify({ attendanceRecords })
       });
 
+      dbSevaRecordsRef.current = JSON.parse(JSON.stringify(sevaAttendanceRecords));
+      clearSevaDraft();
+      localStorage.removeItem(`seva_draft_${selectedSevaId}`);
       triggerNotification('હાજરી સફળતાપૂર્વક સાચવવામાં આવી છે');
       // Refresh statistics/reports
       fetchSevaReports();
@@ -771,6 +836,7 @@ function AppContent() {
 
   // Load Event and populate Attendance status
   const loadEventAttendance = async (eventId) => {
+    loadedEventIdRef.current = null;
     setSelectedEventId(eventId);
     try {
       const data = await apiRequest(`/api/events/${eventId}`);
@@ -803,6 +869,27 @@ function AppContent() {
         }
       });
 
+      // Store baseline DB records before applying any local draft overlays
+      dbSabhaRecordsRef.current = JSON.parse(JSON.stringify(records));
+
+      // Check if local draft exists in localStorage (indefinite persistence)
+      const storedDraft = localStorage.getItem(`sabha_draft_${eventId}`);
+      if (storedDraft) {
+        try {
+          const parsedDraft = JSON.parse(storedDraft);
+          Object.keys(parsedDraft).forEach(mId => {
+            records[mId] = {
+              ...records[mId],
+              ...parsedDraft[mId],
+              arrivalTime: parsedDraft[mId].arrivalTime ? new Date(parsedDraft[mId].arrivalTime) : null
+            };
+          });
+          triggerNotification('અણસાચવેલ સભા હાજરી ડ્રાફ્ટ લોડ થયો છે');
+        } catch (e) {
+          console.error('Error parsing sabha draft', e);
+        }
+      }
+
       // Compute static sorted list at load time (Present sorted by arrivalTime first, then Absent alphabetically)
       const sorted = [...members].sort((a, b) => {
         const recA = records[a._id] || { status: 'absent' };
@@ -824,9 +911,19 @@ function AppContent() {
       });
       setDisplayMembers(sorted);
       setAttendanceRecords(records);
+      loadedEventIdRef.current = eventId;
     } catch (err) {
       triggerNotification(err.message, 'error');
     }
+  };
+
+  const handleDiscardSabhaDraft = () => {
+    if (!selectedEventId) return;
+    if (!window.confirm('શું તમે ખરેખર સભા અણસાચવેલ ડ્રાફ્ટ કાઢી નાખવા માંગો છો?')) return;
+    clearSabhaDraft();
+    localStorage.removeItem(`sabha_draft_${selectedEventId}`);
+    loadEventAttendance(selectedEventId);
+    triggerNotification('સભા ડ્રાફ્ટ રદ કરવામાં આવ્યો છે', 'info');
   };
 
   // Quick switch active sabha tab (Savar Katha vs Ravi Sabha)
@@ -836,6 +933,7 @@ function AppContent() {
       if (filtered.length > 0) {
         loadEventAttendance(filtered[0]._id);
       } else {
+        loadedEventIdRef.current = null;
         setSelectedEventId(null);
         setActiveEventData(null);
         setAttendanceRecords({});
@@ -915,6 +1013,9 @@ function AppContent() {
         })
       });
 
+      dbSabhaRecordsRef.current = JSON.parse(JSON.stringify(attendanceRecords));
+      clearSabhaDraft();
+      localStorage.removeItem(`sabha_draft_${selectedEventId}`);
       setAttendanceProgress(100);
       setTimeout(() => {
         setSavingAttendance(false);
@@ -1537,16 +1638,31 @@ function AppContent() {
                     </div>
 
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span className="badge badge-success">
                           હાજર: {Object.values(attendanceRecords).filter(r => r.status === 'present').length}
                         </span>
                         <span className="badge badge-danger">
                           ગેરહાજર: {Object.values(attendanceRecords).filter(r => r.status === 'absent').length}
                         </span>
+                        {hasSabhaDraft && (
+                          <span className="badge badge-warning" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            📝 ડ્રાફ્ટ (અણસાચવેલ)
+                          </span>
+                        )}
                       </div>
 
                       <div style={{ display: 'flex', gap: 6 }}>
+                        {hasSabhaDraft && (
+                          <button
+                            className="btn-secondary btn-sm"
+                            onClick={handleDiscardSabhaDraft}
+                            style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                            title="અણસાચવેલ ડ્રાફ્ટ રદ કરો"
+                          >
+                            ડ્રાફ્ટ રદ કરો
+                          </button>
+                        )}
                         <button
                           className="btn-secondary btn-sm"
                           onClick={() => {
@@ -1581,6 +1697,50 @@ function AppContent() {
                       </div>
                     </div>
                   </div>
+
+                  {hasSabhaDraft && (
+                    <div style={{
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
+                      borderRadius: 12,
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                        <div>
+                          <p style={{ fontWeight: 600, fontSize: '0.88rem', color: '#f59e0b', marginBottom: 2 }}>
+                            અણસાચવેલ ડ્રાફ્ટ હાજરી મોજૂદ છે ({sabhaDraftCount} અણસાચવેલ ફેરફારો)
+                          </p>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginBottom: 0 }}>
+                            તમારો ડ્રાફ્ટ સુરક્ષિત સાચવેલ છે. કૃપા કરીને હાજરી સબમિટ કરો અથવા ડ્રાફ્ટ રદ કરો.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="btn-primary"
+                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                          onClick={handleSubmitAttendance}
+                          disabled={savingAttendance}
+                        >
+                          {savingAttendance ? <SpinnerLoader size={14} /> : <UserCheck size={14} />} હવે સબમિટ કરો
+                        </button>
+                        <button
+                          className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                          onClick={handleDiscardSabhaDraft}
+                        >
+                          ડ્રાફ્ટ રદ કરો
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {savingAttendance && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -2596,16 +2756,76 @@ function AppContent() {
                         </div>
 
                         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                             <span className="badge badge-success">
                               હાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'present').length}
                             </span>
                             <span className="badge badge-danger">
                               ગેરહાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'absent').length}
                             </span>
+                            {hasSevaDraft && (
+                              <span className="badge badge-warning" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                📝 ડ્રાફ્ટ (અણસાચવેલ)
+                              </span>
+                            )}
                           </div>
+
+                          {hasSevaDraft && (
+                            <button
+                              className="btn-secondary btn-sm"
+                              onClick={handleDiscardSevaDraft}
+                              style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                              title="અણસાચવેલ સેવા ડ્રાફ્ટ રદ કરો"
+                            >
+                              ડ્રાફ્ટ રદ કરો
+                            </button>
+                          )}
                         </div>
                       </div>
+
+                      {hasSevaDraft && (
+                        <div style={{
+                          background: 'rgba(245, 158, 11, 0.12)',
+                          border: '1px solid rgba(245, 158, 11, 0.35)',
+                          borderRadius: 12,
+                          padding: '12px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          flexWrap: 'wrap'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                            <div>
+                              <p style={{ fontWeight: 600, fontSize: '0.88rem', color: '#f59e0b', marginBottom: 2 }}>
+                                અણસાચવેલ સેવા હાજરી ડ્રાફ્ટ મોજૂદ છે ({sevaDraftCount} અણસાચવેલ ફેરફારો)
+                              </p>
+                              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginBottom: 0 }}>
+                                તમારો સેવા ડ્રાફ્ટ સુરક્ષિત સાચવેલ છે. કૃપા કરીને હાજરી સબમિટ કરો અથવા ડ્રાફ્ટ રદ કરો.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              className="btn-primary"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                              onClick={handleSaveSevaAttendance}
+                              disabled={savingSevaAttendance}
+                            >
+                              {savingSevaAttendance ? <SpinnerLoader size={14} /> : <UserCheck size={14} />} હવે સબમિટ કરો
+                            </button>
+                            <button
+                              className="btn-secondary"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                              onClick={handleDiscardSevaDraft}
+                            >
+                              ડ્રાફ્ટ રદ કરો
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Search Bar for Member Attendance */}
                       <div className="search-field">
