@@ -17,7 +17,9 @@ import {
   UserCheck,
   MapPin,
   Heart,
-  X
+  X,
+  Check,
+  ArrowLeft
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useAttendanceDraft } from './hooks/useAttendanceDraft';
@@ -149,6 +151,7 @@ function AppContent() {
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [attendanceProgress, setAttendanceProgress] = useState(0); // for determinate save progress
   const [attendanceSearch, setAttendanceSearch] = useState('');
+  const [eventSearch, setEventSearch] = useState('');
   const [displayMembers, setDisplayMembers] = useState([]);
   const [eventToDelete, setEventToDelete] = useState(null);
 
@@ -731,11 +734,6 @@ function AppContent() {
     try {
       const data = await apiRequest('/api/events');
       setEvents(data);
-      // Select the latest event of current tab if none selected
-      const filtered = data.filter(e => e.type === sabhaTab);
-      if (filtered.length > 0 && !selectedEventId) {
-        loadEventAttendance(filtered[0]._id);
-      }
     } catch (err) {
       triggerNotification(err.message, 'error');
     } finally {
@@ -928,18 +926,11 @@ function AppContent() {
 
   // Quick switch active sabha tab (Savar Katha vs Ravi Sabha)
   useEffect(() => {
-    if (events.length > 0) {
-      const filtered = events.filter(e => e.type === sabhaTab);
-      if (filtered.length > 0) {
-        loadEventAttendance(filtered[0]._id);
-      } else {
-        loadedEventIdRef.current = null;
-        setSelectedEventId(null);
-        setActiveEventData(null);
-        setAttendanceRecords({});
-      }
-    }
-  }, [sabhaTab, events]);
+    loadedEventIdRef.current = null;
+    setSelectedEventId(null);
+    setActiveEventData(null);
+    setAttendanceRecords({});
+  }, [sabhaTab]);
 
   // Compute Lateness
   const checkIsLate = (arrivalTime, minReachTime) => {
@@ -1407,6 +1398,11 @@ function AppContent() {
   const currentTabKey = isSevaUser ? sevaModuleTab : activeTab;
 
   const handleTabClick = (key) => {
+    if (activeTab === 'attendance' && key !== 'attendance' && selectedEventId && hasSabhaDraft) {
+      triggerNotification('ડ્રાફ્ટ સાચવેલ છે', 'success');
+      setSelectedEventId(null);
+    }
+
     if (isSevaUser) {
       setSevaModuleTab(key);
       if (key === 'reports') {
@@ -1438,121 +1434,138 @@ function AppContent() {
       )}
 
       {/* Header Panel */}
-      <header className="glass-panel app-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span className="brand-mark" aria-hidden="true">
-              <Users size={22} />
-            </span>
-            <div>
-              <h1 className="app-title">સભા વ્યવસ્થાપન</h1>
-              <p className="app-subtitle">જ્ઞાન સત્સંગ મંડળ પાદરા</p>
+      {/* Header Panel */}
+      {!(activeTab === 'attendance' && selectedEventId) && (
+        <header className="glass-panel app-header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span className="brand-mark" aria-hidden="true">
+                <Users size={22} />
+              </span>
+              <div>
+                <h1 className="app-title">પાદરા જ્ઞાન સત્સંગ</h1>
+              </div>
             </div>
+
+            <button className="icon-btn" onClick={logout} title="લોગઆઉટ">
+              <LogOut size={20} color="#ef4444" />
+            </button>
           </div>
 
-          <button className="btn-secondary btn-sm" onClick={logout}>
-            <LogOut size={15} /> લોગઆઉટ
-          </button>
-        </div>
-
-        {/* Desktop primary navigation */}
-        {visibleNavItems.length > 1 && (
-          <nav className="main-nav" aria-label="મુખ્ય નેવિગેશન">
-            {visibleNavItems.map(item => (
-              <button
-                key={item.key}
-                className={`main-nav-item ${currentTabKey === item.key ? 'active' : ''}`}
-                onClick={() => handleTabClick(item.key)}
-                aria-current={currentTabKey === item.key ? 'page' : undefined}
-              >
-                <item.icon size={16} /> {item.label}
-              </button>
-            ))}
-          </nav>
-        )}
-      </header>
+          {/* Desktop primary navigation */}
+          {visibleNavItems.length > 1 && (
+            <nav className="main-nav" aria-label="મુખ્ય નેવિગેશન">
+              {visibleNavItems.map(item => (
+                <button
+                  key={item.key}
+                  className={`main-nav-item ${currentTabKey === item.key ? 'active' : ''}`}
+                  onClick={() => handleTabClick(item.key)}
+                  aria-current={currentTabKey === item.key ? 'page' : undefined}
+                >
+                  <item.icon size={16} /> {item.label}
+                </button>
+              ))}
+            </nav>
+          )}
+        </header>
+      )}
 
       {/* --- PANEL 1: ATTENDANCE --- */}
       {activeTab === 'attendance' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Double Tabs for Savar ni Katha vs Ravi Sabha */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div className="segmented-control" style={{ maxWidth: 360, flex: 1 }}>
-              <button
-                className={`segmented-button ${sabhaTab === 'savar_ni_katha' ? 'active' : ''}`}
-                onClick={() => setSabhaTab('savar_ni_katha')}
-              >
-                સવારની કથા
-              </button>
-              <button
-                className={`segmented-button ${sabhaTab === 'ravi_sabha' ? 'active' : ''}`}
-                onClick={() => setSabhaTab('ravi_sabha')}
-              >
-                રવિસભા
+          {!selectedEventId && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+              <div className="segmented-control" style={{ maxWidth: 360, flex: 1 }}>
+                <button
+                  className={`segmented-button ${sabhaTab === 'savar_ni_katha' ? 'active' : ''}`}
+                  onClick={() => setSabhaTab('savar_ni_katha')}
+                >
+                  સવારની કથા
+                </button>
+                <button
+                  className={`segmented-button ${sabhaTab === 'ravi_sabha' ? 'active' : ''}`}
+                  onClick={() => setSabhaTab('ravi_sabha')}
+                >
+                  રવિસભા
+                </button>
+              </div>
+
+              <button className="btn-primary" onClick={() => {
+                setEditingEventId(null);
+                setEventType(sabhaTab);
+                setEventMinReachTimeText('10:00');
+                setEventMinReachTimePeriod('AM');
+                setShowEventModal(true);
+              }}>
+                <Plus size={18} /> નવી સભા
               </button>
             </div>
+          )}
 
-            <button className="btn-primary" onClick={() => {
-              setEditingEventId(null);
-              setEventType(sabhaTab);
-              setEventMinReachTimeText('10:00');
-              setEventMinReachTimePeriod('AM');
-              setShowEventModal(true);
-            }}>
-              <Plus size={18} /> નવી સભા
-            </button>
-          </div>
+          {!selectedEventId ? (
+            <div className="glass-panel animate-fade-in" style={{ padding: 24, minHeight: '600px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>સભા ઈતિહાસ ({SABHA_TYPES[sabhaTab]})</h3>
+                <div className="search-field" style={{ minWidth: 250, maxWidth: '100%', flex: 1 }}>
+                  <Search className="search-icon" size={18} />
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="તારીખ શોધો..."
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                  />
+                  {eventSearch && (
+                    <button
+                      className="icon-btn"
+                      style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, minWidth: 32 }}
+                      onClick={() => setEventSearch('')}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-          {/* Mobile Event Selector Dropdown */}
-          <div className="glass-panel mobile-only" style={{ padding: 16 }}>
-            <label className="form-label">
-              સભા પસંદ કરો ({SABHA_TYPES[sabhaTab]})
-            </label>
-            <select
-              className="glass-input"
-              value={selectedEventId || ''}
-              onChange={(e) => loadEventAttendance(e.target.value)}
-            >
-              <option value="">-- સભા પસંદ કરો --</option>
-              {events
-                .filter(e => e.type === sabhaTab)
-                .map(event => {
-                  const formattedDate = new Date(event.date).toLocaleDateString('gu-IN', {
-                    year: 'numeric', month: 'long', day: 'numeric'
-                  });
-                  return (
-                    <option key={event._id} value={event._id}>
-                      {formattedDate} {event.minReachTime ? `(સમય: ${formatTime12h(event.minReachTime)})` : ''}
-                    </option>
-                  );
-                })}
-            </select>
-          </div>
-
-          <div className="attendance-main-grid">
-            {/* Left Sidebar: Event List */}
-            <div className="glass-panel desktop-only" style={{ padding: 20, maxHeight: '600px', overflowY: 'auto' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16, color: 'var(--color-text-secondary)' }}>સભા ઈતિહાસ ({SABHA_TYPES[sabhaTab]})</h3>
               {loadingEvents ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div className="skeleton" style={{ height: 50 }} />
-                  <div className="skeleton" style={{ height: 50 }} />
-                  <div className="skeleton" style={{ height: 50 }} />
+                <div className="grid-3">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
                 </div>
               ) : events.filter(e => e.type === sabhaTab).length === 0 ? (
-                <div className="empty-state" style={{ padding: '32px 12px' }}>
-                  <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
-                    <Calendar size={22} />
+                <div className="empty-state">
+                  <div className="empty-state-icon">
+                    <Calendar size={28} />
                   </div>
-                  <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>કોઈ સભા મળી નથી</p>
-                  <p className="empty-state-desc" style={{ fontSize: '0.78rem', marginBottom: 0 }}>ઉપરના બટનથી નવી સભા આયોજિત કરો.</p>
+                  <p className="empty-state-title">કોઈ સભા મળી નથી</p>
+                  <p className="empty-state-desc">ઉપરના બટનથી નવી સભા આયોજિત કરો.</p>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {events
-                    .filter(e => e.type === sabhaTab)
-                    .map(event => {
-                      const isSelected = selectedEventId === event._id;
+              ) : (() => {
+                const filteredEvents = events
+                  .filter(e => e.type === sabhaTab)
+                  .filter(e => {
+                     const formattedDate = new Date(e.date).toLocaleDateString('gu-IN', {
+                       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                     });
+                     return formattedDate.includes(eventSearch);
+                  });
+
+                if(filteredEvents.length === 0) {
+                  return (
+                    <div className="empty-state">
+                      <div className="empty-state-icon">
+                        <Search size={28} />
+                      </div>
+                      <p className="empty-state-title">કોઈ સભા મળી નથી</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid-3">
+                    {filteredEvents.map(event => {
                       const formattedDate = new Date(event.date).toLocaleDateString('gu-IN', {
                         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                       });
@@ -1560,36 +1573,27 @@ function AppContent() {
                       return (
                         <div
                           key={event._id}
-                          className={`glass-card ${isSelected ? 'active' : ''}`}
+                          className="glass-card glass-panel-hover"
                           onClick={() => loadEventAttendance(event._id)}
-                          style={{
-                            cursor: 'pointer',
-                            borderLeft: isSelected ? '4px solid var(--color-primary)' : '1px solid var(--glass-border)',
-                            background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.01)',
-                            padding: 12
-                          }}
+                          style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12, padding: 20 }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ flex: 1 }}>
-                              <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 2 }}>{formattedDate}</p>
+                              <p style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 6 }}>{formattedDate}</p>
                               {event.minReachTime && (
-                                <p style={{ fontSize: '0.75rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                  <Clock size={12} /> સમય: {formatTime12h(event.minReachTime)} સુધીમાં
+                                <p style={{ fontSize: '0.85rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <Clock size={14} /> સમય: {formatTime12h(event.minReachTime)} સુધીમાં
                                 </p>
                               )}
                             </div>
-                            <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                               <button
                                 className="icon-btn"
-                                style={{ width: 30, height: 30, minWidth: 30 }}
-                                title="સભા વિગતો સુધારો"
-                                aria-label="સભા વિગતો સુધારો"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingEventId(event._id);
                                   setEventDate(new Date(event.date).toISOString().split('T')[0]);
                                   setEventType(event.type);
-
                                   const timeStr = event.minReachTime || '10:00';
                                   const [hStr, mStr] = timeStr.split(':');
                                   let hours = parseInt(hStr, 10);
@@ -1598,149 +1602,84 @@ function AppContent() {
                                   hours = hours ? hours : 12;
                                   setEventMinReachTimeText(`${String(hours).padStart(2, '0')}:${mStr}`);
                                   setEventMinReachTimePeriod(period);
-
                                   setShowEventModal(true);
                                 }}
+                                title="સુધારો"
                               >
-                                <Edit size={14} />
+                                <Edit size={16} />
                               </button>
                               <button
                                 className="icon-btn icon-btn-danger"
-                                style={{ width: 30, height: 30, minWidth: 30 }}
-                                title="સભા રદ કરો"
-                                aria-label="સભા રદ કરો"
                                 onClick={(e) => handleDeleteEvent(event._id, e)}
+                                title="રદ કરો"
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={16} />
                               </button>
                             </div>
                           </div>
                         </div>
                       );
                     })}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
             </div>
+          ) : (
+            <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
+                <button 
+                  className="btn-secondary" 
+                  onClick={() => {
+                    if (hasSabhaDraft) {
+                      triggerNotification('ડ્રાફ્ટ સાચવેલ છે', 'success');
+                    }
+                    setSelectedEventId(null);
+                  }}
+                  style={{ width: 40, height: 40, borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="પાછા જાવ"
+                >
+                  <ArrowLeft size={20} />
+                </button>
 
-            {/* Right main area: Attendance marker grid */}
-            <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <button
+                  className="btn-primary btn-sm"
+                  onClick={handleSubmitAttendance}
+                  disabled={savingAttendance || (activeEventData && members.length === 0)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20 }}
+                >
+                  {savingAttendance ? <SpinnerLoader size={16} /> : <UserCheck size={16} />} હાજરી સબમિટ કરો
+                </button>
+              </div>
               {activeEventData ? (
                 <>
-                  <div className="panel-header">
-                    <div>
-                      <h2 className="panel-title">
-                        હાજરી પત્રક: {new Date(activeEventData.date).toLocaleDateString('gu-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </h2>
-                      <p className="panel-subtitle">
-                        પ્રકાર: {SABHA_TYPES[activeEventData.type]}
-                        {activeEventData.minReachTime && ` (પહોંચવાનો સમય: ${formatTime12h(activeEventData.minReachTime)})`}
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span className="badge badge-success">
-                          હાજર: {Object.values(attendanceRecords).filter(r => r.status === 'present').length}
-                        </span>
-                        <span className="badge badge-danger">
-                          ગેરહાજર: {Object.values(attendanceRecords).filter(r => r.status === 'absent').length}
-                        </span>
-                        {hasSabhaDraft && (
-                          <span className="badge badge-warning" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            📝 ડ્રાફ્ટ (અણસાચવેલ)
-                          </span>
-                        )}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0 8px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: 12 }}>
+                      <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-success)', lineHeight: 1.2 }}>
+                          {Object.values(attendanceRecords).filter(r => r.status === 'present' && !r.isLate).length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>OnTime</div>
                       </div>
-
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        {hasSabhaDraft && (
-                          <button
-                            className="btn-secondary btn-sm"
-                            onClick={handleDiscardSabhaDraft}
-                            style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                            title="અણસાચવેલ ડ્રાફ્ટ રદ કરો"
-                          >
-                            ડ્રાફ્ટ રદ કરો
-                          </button>
-                        )}
-                        <button
-                          className="btn-secondary btn-sm"
-                          onClick={() => {
-                            setEditingEventId(activeEventData._id);
-                            setEventDate(new Date(activeEventData.date).toISOString().split('T')[0]);
-                            setEventType(activeEventData.type);
-
-                            const timeStr = activeEventData.minReachTime || '10:00';
-                            const [hStr, mStr] = timeStr.split(':');
-                            let hours = parseInt(hStr, 10);
-                            const period = hours >= 12 ? 'PM' : 'AM';
-                            hours = hours % 12;
-                            hours = hours ? hours : 12;
-                            setEventMinReachTimeText(`${String(hours).padStart(2, '0')}:${mStr}`);
-                            setEventMinReachTimePeriod(period);
-
-                            setShowEventModal(true);
-                          }}
-                          title="સભા વિગતો સુધારો"
-                        >
-                          <Edit size={13} /> સુધારો
-                        </button>
-
-                        <button
-                          className="btn-danger btn-sm"
-                          style={{ boxShadow: 'none' }}
-                          onClick={(e) => handleDeleteEvent(activeEventData._id, e)}
-                          title="આ સભા રદ કરો"
-                        >
-                          <Trash2 size={13} /> સભા રદ કરો
-                        </button>
+                      <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-warning)', lineHeight: 1.2 }}>
+                          {Object.values(attendanceRecords).filter(r => r.status === 'present' && r.isLate).length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Late</div>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-danger)', lineHeight: 1.2 }}>
+                          {Object.values(attendanceRecords).filter(r => r.status === 'absent').length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Absent</div>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-text-secondary)', lineHeight: 1.2 }}>
+                          {Object.values(attendanceRecords).filter(r => r.status === 'excused').length}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Excused</div>
                       </div>
                     </div>
                   </div>
-
-                  {hasSabhaDraft && (
-                    <div style={{
-                      background: 'rgba(245, 158, 11, 0.12)',
-                      border: '1px solid rgba(245, 158, 11, 0.35)',
-                      borderRadius: 12,
-                      padding: '12px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      flexWrap: 'wrap'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0 }} />
-                        <div>
-                          <p style={{ fontWeight: 600, fontSize: '0.88rem', color: '#f59e0b', marginBottom: 2 }}>
-                            અણસાચવેલ ડ્રાફ્ટ હાજરી મોજૂદ છે ({sabhaDraftCount} અણસાચવેલ ફેરફારો)
-                          </p>
-                          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginBottom: 0 }}>
-                            તમારો ડ્રાફ્ટ સુરક્ષિત સાચવેલ છે. કૃપા કરીને હાજરી સબમિટ કરો અથવા ડ્રાફ્ટ રદ કરો.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          className="btn-primary"
-                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                          onClick={handleSubmitAttendance}
-                          disabled={savingAttendance}
-                        >
-                          {savingAttendance ? <SpinnerLoader size={14} /> : <UserCheck size={14} />} હવે સબમિટ કરો
-                        </button>
-                        <button
-                          className="btn-secondary"
-                          style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                          onClick={handleDiscardSabhaDraft}
-                        >
-                          ડ્રાફ્ટ રદ કરો
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
                   {savingAttendance && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1776,7 +1715,7 @@ function AppContent() {
 
                   {/* Attendance Cards Grid */}
                   {displayMembers.length === 0 ? (
-                    <div className="empty-state">
+                    <div className="empty-state" style={{ padding: '48px 24px', background: 'rgba(255,255,255,0.4)', borderRadius: 12, border: '1px dashed var(--glass-border-strong)' }}>
                       <div className="empty-state-icon">
                         <Users size={28} />
                       </div>
@@ -1810,69 +1749,106 @@ function AppContent() {
                           return (
                             <div
                               key={member._id}
-                              className="glass-card animate-fade-in"
+                              className="animate-fade-in"
                               style={{
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: 12,
-                                borderLeft: `3px solid ${isPresent ? 'var(--color-success)' : 'var(--color-danger)'}`,
-                                background: isPresent ? 'rgba(16, 185, 129, 0.03)' : 'rgba(244, 63, 94, 0.02)'
+                                padding: '12px 0',
+                                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                                background: 'transparent',
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <h4 style={{ fontWeight: 600, fontSize: '0.95rem', overflowWrap: 'anywhere' }}>{member.name}</h4>
-                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{member.uniqueCode}</span>
-                                    <span className="badge badge-primary">{CATEGORY_TAGS[member.type]}</span>
+                              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <h4 style={{ fontWeight: 500, fontSize: '1.05rem', color: '#111', overflowWrap: 'anywhere', margin: 0 }}>{member.name}</h4>
+                                  <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, marginTop: 4 }}>
+                                    SMK ID: <span style={{ fontWeight: 600 }}>{member.uniqueCode}</span>
                                   </p>
                                 </div>
 
-                                {/* Present / Absent Quick Buttons */}
-                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                {/* Present / Late / Absent / Excused Buttons */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                                   <button
-                                    onClick={() => markAttendance(member._id, 'present')}
+                                    onClick={() => {
+                                      markAttendance(member._id, 'present');
+                                      setAttendanceRecords(prev => ({
+                                        ...prev,
+                                        [member._id]: {
+                                          ...prev[member._id],
+                                          isLate: false
+                                        }
+                                      }));
+                                    }}
                                     style={{
-                                      border: 'none',
                                       borderRadius: '50%',
-                                      width: 40,
-                                      height: 40,
+                                      width: 36,
+                                      height: 36,
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
                                       cursor: 'pointer',
-                                      background: isPresent ? 'var(--color-success)' : 'rgba(255,255,255,0.05)',
-                                      color: isPresent ? '#fff' : 'var(--color-text-secondary)',
+                                      background: isPresent && !rec.isLate ? '#15803d' : '#dcfce7',
+                                      color: isPresent && !rec.isLate ? '#fff' : '#15803d',
+                                      border: 'none',
                                       transition: 'var(--transition-smooth)',
-                                      boxShadow: isPresent ? '0 2px 10px rgba(16,185,129,0.4)' : 'none'
                                     }}
-                                    title="હાજર"
+                                    title="હાજર (OnTime)"
                                     aria-label={`${member.name} હાજર`}
-                                    aria-pressed={isPresent}
                                   >
                                     <CheckCircle size={18} />
                                   </button>
+
                                   <button
-                                    onClick={() => markAttendance(member._id, 'absent')}
+                                    onClick={() => {
+                                      setAttendanceRecords(prev => ({
+                                        ...prev,
+                                        [member._id]: {
+                                          ...prev[member._id],
+                                          status: 'present',
+                                          arrivalTime: new Date(),
+                                          isLate: true,
+                                        }
+                                      }));
+                                    }}
                                     style={{
-                                      border: 'none',
                                       borderRadius: '50%',
-                                      width: 40,
-                                      height: 40,
+                                      width: 36,
+                                      height: 36,
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
                                       cursor: 'pointer',
-                                      background: !isPresent ? 'var(--color-danger)' : 'rgba(255,255,255,0.05)',
-                                      color: !isPresent ? '#fff' : 'var(--color-text-secondary)',
+                                      background: isPresent && rec.isLate ? '#ca8a04' : '#fef08a',
+                                      color: isPresent && rec.isLate ? '#fff' : '#ca8a04',
+                                      border: 'none',
                                       transition: 'var(--transition-smooth)',
-                                      boxShadow: !isPresent ? '0 2px 10px rgba(244,63,94,0.35)' : 'none'
                                     }}
-                                    title="ગેરહાજર"
-                                    aria-label={`${member.name} ગેરહાજર`}
-                                    aria-pressed={!isPresent}
+                                    title="મોડા (Late)"
+                                    aria-label={`${member.name} મોડા`}
                                   >
-                                    <XCircle size={18} />
+                                    <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>!</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => markAttendance(member._id, 'absent')}
+                                    style={{
+                                      borderRadius: '50%',
+                                      width: 36,
+                                      height: 36,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                      background: !isPresent ? '#dc2626' : '#fee2e2',
+                                      color: !isPresent ? '#fff' : '#dc2626',
+                                      border: 'none',
+                                      transition: 'var(--transition-smooth)',
+                                    }}
+                                    title="ગેરહાજર (Absent)"
+                                    aria-label={`${member.name} ગેરહાજર`}
+                                  >
+                                    <X size={18} />
                                   </button>
                                 </div>
                               </div>
@@ -1910,14 +1886,7 @@ function AppContent() {
                     );
                   })()}
 
-                  <button
-                    className="btn-primary"
-                    onClick={handleSubmitAttendance}
-                    disabled={savingAttendance || members.length === 0}
-                    style={{ alignSelf: 'flex-end', marginTop: 12 }}
-                  >
-                    {savingAttendance ? <SpinnerLoader size={18} /> : <UserCheck size={18} />} હાજરી સબમિટ કરો
-                  </button>
+
                 </>
               ) : (
                 <div className="empty-state">
@@ -1938,7 +1907,7 @@ function AppContent() {
                 </div>
               )}
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -1946,8 +1915,8 @@ function AppContent() {
       {activeTab === 'members' && (
         <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Controls bar */}
-          <div className="glass-panel" style={{ padding: 20, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 280, flexWrap: 'wrap' }}>
+          <div className="glass-panel controls-bar" style={{ padding: 20 }}>
+            <div className="search-filter-group">
               <div className="search-field" style={{ minWidth: 200 }}>
                 <Search className="search-icon" size={18} />
                 <input
@@ -1982,13 +1951,13 @@ function AppContent() {
               </select>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div className="action-btn-group">
               <button className="btn-secondary" onClick={() => {
                 setBulkResult(null);
                 setBulkText('');
                 setShowBulkModal(true);
               }}>
-                <FileSpreadsheet size={16} /> એકસાથે ઉમેરો (બલ્ક)
+                <FileSpreadsheet size={16} /> સભ્ય બલ્ક
               </button>
 
               <button className="btn-primary" onClick={() => {
@@ -2764,7 +2733,7 @@ function AppContent() {
                               ગેરહાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'absent').length}
                             </span>
                             {hasSevaDraft && (
-                              <span className="badge badge-warning" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span className="badge badge-warning" style={{ background: 'rgba(219, 181, 238, 0.3)', color: '#4C0585', border: '1px solid rgba(76, 5, 133, 0.2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                 📝 ડ્રાફ્ટ (અણસાચવેલ)
                               </span>
                             )}
@@ -2774,7 +2743,6 @@ function AppContent() {
                             <button
                               className="btn-secondary btn-sm"
                               onClick={handleDiscardSevaDraft}
-                              style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                               title="અણસાચવેલ સેવા ડ્રાફ્ટ રદ કરો"
                             >
                               ડ્રાફ્ટ રદ કરો
@@ -2785,8 +2753,8 @@ function AppContent() {
 
                       {hasSevaDraft && (
                         <div style={{
-                          background: 'rgba(245, 158, 11, 0.12)',
-                          border: '1px solid rgba(245, 158, 11, 0.35)',
+                          background: 'rgba(219, 181, 238, 0.3)',
+                          border: '1px solid rgba(76, 5, 133, 0.2)',
                           borderRadius: 12,
                           padding: '12px 16px',
                           display: 'flex',
@@ -2796,9 +2764,9 @@ function AppContent() {
                           flexWrap: 'wrap'
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <AlertTriangle size={20} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                            <AlertTriangle size={20} style={{ color: '#4C0585', flexShrink: 0 }} />
                             <div>
-                              <p style={{ fontWeight: 600, fontSize: '0.88rem', color: '#f59e0b', marginBottom: 2 }}>
+                              <p style={{ fontWeight: 600, fontSize: '0.88rem', color: '#4C0585', marginBottom: 2 }}>
                                 અણસાચવેલ સેવા હાજરી ડ્રાફ્ટ મોજૂદ છે ({sevaDraftCount} અણસાચવેલ ફેરફારો)
                               </p>
                               <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginBottom: 0 }}>
@@ -2818,7 +2786,7 @@ function AppContent() {
                             </button>
                             <button
                               className="btn-secondary"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                               onClick={handleDiscardSevaDraft}
                             >
                               ડ્રાફ્ટ રદ કરો
