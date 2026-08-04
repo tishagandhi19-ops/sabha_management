@@ -42,7 +42,6 @@ router.post('/login', async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET || 'sabha_management_super_secret_key_987654321',
-      { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
         res.json({ token });
