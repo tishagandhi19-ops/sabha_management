@@ -1,5 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
+const BASE_URL = 'https://sabha-management.onrender.com';
+
 const AuthContext = createContext(null);
 
 const decodeToken = (token) => {
@@ -38,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +82,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(`${BASE_URL}${url}`, {
         ...options,
         headers,
       });
