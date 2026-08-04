@@ -112,6 +112,7 @@ function AppContent() {
   const [sevaAttendanceRecords, setSevaAttendanceRecords] = useState({}); // { memberId: { status, hours } }
   const [savingSevaAttendance, setSavingSevaAttendance] = useState(false);
   const [sevaAttendanceSearch, setSevaAttendanceSearch] = useState('');
+  const [sevaSearch, setSevaSearch] = useState('');
 
   // Seva Reports State
   const [sevaTab, setSevaTab] = useState(''); // active Seva Type tab ID
@@ -1546,13 +1547,13 @@ function AppContent() {
                 const filteredEvents = events
                   .filter(e => e.type === sabhaTab)
                   .filter(e => {
-                     const formattedDate = new Date(e.date).toLocaleDateString('gu-IN', {
-                       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                     });
-                     return formattedDate.includes(eventSearch);
+                    const formattedDate = new Date(e.date).toLocaleDateString('gu-IN', {
+                      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                    });
+                    return formattedDate.includes(eventSearch);
                   });
 
-                if(filteredEvents.length === 0) {
+                if (filteredEvents.length === 0) {
                   return (
                     <div className="empty-state">
                       <div className="empty-state-icon">
@@ -1627,8 +1628,8 @@ function AppContent() {
           ) : (
             <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
-                <button 
-                  className="btn-secondary" 
+                <button
+                  className="btn-secondary"
                   onClick={() => {
                     if (hasSabhaDraft) {
                       triggerNotification('ડ્રાફ્ટ સાચવેલ છે', 'success');
@@ -2596,158 +2597,173 @@ function AppContent() {
           {/* Module 1: Seva Attendance */}
           {sevaModuleTab === 'attendance' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              {/* Header Actions */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  className="btn-primary"
-                  onClick={() => {
-                    setSevaDate(new Date().toISOString().split('T')[0]);
-                    setSevaTypeId('');
-                    setSevaLeader('');
-                    setShowSevaModal(true);
-                  }}
-                >
-                  <Plus size={16} /> નવી સેવા આયોજિત કરો
-                </button>
-              </div>
+              {!selectedSevaId ? (
+                <div className="glass-panel animate-fade-in" style={{ padding: 24, minHeight: '600px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>સેવા ઈતિહાસ</h3>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
+                      <div className="search-field" style={{ minWidth: 250, maxWidth: '100%', flex: '0 1 auto' }}>
+                        <Search className="search-icon" size={18} />
+                        <input
+                          type="text"
+                          className="glass-input"
+                          placeholder="તારીખ અથવા સેવા પ્રકાર શોધો..."
+                          value={sevaSearch}
+                          onChange={(e) => setSevaSearch(e.target.value)}
+                        />
+                        {sevaSearch && (
+                          <button
+                            className="icon-btn"
+                            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, minWidth: 32 }}
+                            onClick={() => setSevaSearch('')}
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        className="btn-primary"
+                        onClick={() => {
+                          setSevaDate(new Date().toISOString().split('T')[0]);
+                          setSevaTypeId('');
+                          setSevaLeader('');
+                          setShowSevaModal(true);
+                        }}
+                      >
+                        <Plus size={18} /> નવી સેવા આયોજિત કરો
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Mobile select dropdown for sevas */}
-              <div className="glass-panel mobile-only" style={{ padding: 16 }}>
-                <label className="form-label">
-                  સેવા પસંદ કરો:
-                </label>
-                <select
-                  className="glass-input"
-                  value={selectedSevaId || ''}
-                  onChange={(e) => loadSevaAttendance(e.target.value)}
-                >
-                  <option value="">-- સેવા પસંદ કરો --</option>
-                  {sevas.map(seva => {
-                    const formattedDate = new Date(seva.date).toLocaleDateString('gu-IN', {
-                      year: 'numeric', month: 'long', day: 'numeric'
-                    });
-                    const typeName = seva.sevaType ? seva.sevaType.name : 'સેવા';
-                    return (
-                      <option key={seva._id} value={seva._id}>
-                        {formattedDate} - {typeName} {seva.leader ? `(લીડર: ${seva.leader})` : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              {/* Attendance Grid */}
-              <div className="attendance-main-grid">
-                {/* Left Sidebar: Seva List */}
-                <div className="glass-panel desktop-only" style={{ padding: 20, maxHeight: '600px', overflowY: 'auto' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16, color: 'var(--color-text-secondary)' }}>
-                    સેવા ઈતિહાસ
-                  </h3>
                   {loadingSevas ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div className="skeleton" style={{ height: 50 }} />
-                      <div className="skeleton" style={{ height: 50 }} />
-                      <div className="skeleton" style={{ height: 50 }} />
+                    <div className="grid-3">
+                      <SkeletonCard />
+                      <SkeletonCard />
+                      <SkeletonCard />
                     </div>
                   ) : sevas.length === 0 ? (
-                    <div className="empty-state" style={{ padding: '32px 12px' }}>
-                      <div className="empty-state-icon" style={{ width: 48, height: 48 }}>
-                        <Heart size={22} />
+                    <div className="empty-state">
+                      <div className="empty-state-icon">
+                        <Calendar size={28} />
                       </div>
-                      <p className="empty-state-title" style={{ fontSize: '0.9rem' }}>કોઈ સેવા મળી નથી</p>
-                      <p className="empty-state-desc" style={{ fontSize: '0.78rem', marginBottom: 0 }}>ઉપરના બટનથી નવી સેવા આયોજિત કરો.</p>
+                      <p className="empty-state-title">કોઈ સેવા મળી નથી</p>
+                      <p className="empty-state-desc">નવી સેવા આયોજિત કરવા માટે ઉપરના બટન પર ક્લિક કરો.</p>
                     </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {sevas.map(seva => {
-                        const isSelected = selectedSevaId === seva._id;
-                        const formattedDate = new Date(seva.date).toLocaleDateString('gu-IN', {
-                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                        });
-                        const typeName = seva.sevaType ? seva.sevaType.name : 'સેવા';
+                  ) : (() => {
+                    const filteredSevas = sevas.filter(seva => {
+                      const formattedDate = new Date(seva.date).toLocaleDateString('gu-IN', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                      });
+                      const typeName = seva.sevaType ? seva.sevaType.name.toLowerCase() : '';
+                      const leaderName = seva.leader ? seva.leader.toLowerCase() : '';
+                      const query = sevaSearch.toLowerCase();
+                      return formattedDate.toLowerCase().includes(query) || typeName.includes(query) || leaderName.includes(query);
+                    });
 
-                        return (
-                          <div
-                            key={seva._id}
-                            className={`glass-card ${isSelected ? 'active' : ''}`}
-                            onClick={() => loadSevaAttendance(seva._id)}
-                            style={{
-                              cursor: 'pointer',
-                              borderLeft: isSelected ? '4px solid var(--color-primary)' : '1px solid var(--glass-border)',
-                              background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.01)',
-                              padding: 12
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div style={{ flex: 1 }}>
-                                <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 2 }}>{formattedDate}</p>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>{typeName}</p>
-                                {seva.leader && (
-                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                                    લીડર: {seva.leader}
+                    if (filteredSevas.length === 0) {
+                      return (
+                        <div className="empty-state">
+                          <div className="empty-state-icon">
+                            <Search size={28} />
+                          </div>
+                          <p className="empty-state-title">કોઈ સેવા મળી નથી</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid-3">
+                        {filteredSevas.map(seva => {
+                          const formattedDate = new Date(seva.date).toLocaleDateString('gu-IN', {
+                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                          });
+                          const typeName = seva.sevaType ? seva.sevaType.name : 'સેવા';
+
+                          return (
+                            <div
+                              key={seva._id}
+                              className="glass-card glass-panel-hover"
+                              onClick={() => loadSevaAttendance(seva._id)}
+                              style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 12, padding: 20 }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1 }}>
+                                  <p style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: 6 }}>{formattedDate}</p>
+                                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Heart size={14} /> પ્રકાર: {typeName}
                                   </p>
-                                )}
-                              </div>
-                              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                                <button
-                                  className="icon-btn icon-btn-danger"
-                                  style={{ width: 30, height: 30, minWidth: 30 }}
-                                  title="સેવા કાઢી નાખો"
-                                  aria-label="સેવા કાઢી નાખો"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteSeva(seva._id);
-                                  }}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                  {seva.leader && (
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                      લીડર: {seva.leader}
+                                    </p>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                  <button
+                                    className="icon-btn icon-btn-danger"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSeva(seva._id);
+                                    }}
+                                    title="રદ કરો"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
+              ) : (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => {
+                        setSelectedSevaId(null);
+                      }}
+                      style={{ width: 40, height: 40, borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="પાછા જાવ"
+                    >
+                      <ArrowLeft size={20} />
+                    </button>
 
-                {/* Right Column: Attendance marker grid */}
-                <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <button
+                      className="btn-primary btn-sm"
+                      onClick={handleSaveSevaAttendance}
+                      disabled={savingSevaAttendance || (activeSevaData && sevaMembers.length === 0)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20 }}
+                    >
+                      {savingSevaAttendance ? <SpinnerLoader size={16} /> : <UserCheck size={16} />} હાજરી સબમિટ કરો
+                    </button>
+                  </div>
+
                   {activeSevaData ? (
-                    <>
-                      <div className="panel-header">
-                        <div>
-                          <h2 className="panel-title">
-                            હાજરી પત્રક: {new Date(activeSevaData.date).toLocaleDateString('gu-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                          </h2>
-                          <p className="panel-subtitle">
-                            સેવા પ્રકાર: {activeSevaData.sevaType ? activeSevaData.sevaType.name : 'અજ્ઞાત'} {activeSevaData.leader ? `| લીડર: ${activeSevaData.leader}` : ''}
-                          </p>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <span className="badge badge-success">
-                              હાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'present').length}
-                            </span>
-                            <span className="badge badge-danger">
-                              ગેરહાજર: {Object.values(sevaAttendanceRecords).filter(r => r.status === 'absent').length}
-                            </span>
-                            {hasSevaDraft && (
-                              <span className="badge badge-warning" style={{ background: 'rgba(219, 181, 238, 0.3)', color: '#4C0585', border: '1px solid rgba(76, 5, 133, 0.2)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                📝 ડ્રાફ્ટ (અણસાચવેલ)
-                              </span>
-                            )}
+                    <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                      <div>
+                        <h2 className="panel-title" style={{ fontSize: '1.4rem', fontWeight: 700, margin: '4px 0' }}>
+                          હાજરી પત્રક: {new Date(activeSevaData.date).toLocaleDateString('gu-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </h2>
+                        <p className="panel-subtitle" style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: 12 }}>
+                          સેવા પ્રકાર: {activeSevaData.sevaType ? activeSevaData.sevaType.name : 'અજ્ઞાત'} {activeSevaData.leader ? `| લીડર: ${activeSevaData.leader}` : ''}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0 8px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: 12 }}>
+                          <div style={{ flex: 1, textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-success)', lineHeight: 1.2 }}>
+                              {Object.values(sevaAttendanceRecords).filter(r => r.status === 'present').length}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Present</div>
                           </div>
-
-                          {hasSevaDraft && (
-                            <button
-                              className="btn-secondary btn-sm"
-                              onClick={handleDiscardSevaDraft}
-                              title="અણસાચવેલ સેવા ડ્રાફ્ટ રદ કરો"
-                            >
-                              ડ્રાફ્ટ રદ કરો
-                            </button>
-                          )}
+                          <div style={{ flex: 1, textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--color-danger)', lineHeight: 1.2 }}>
+                              {Object.values(sevaAttendanceRecords).filter(r => r.status === 'absent').length}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Absent</div>
+                          </div>
                         </div>
                       </div>
 
@@ -2819,12 +2835,12 @@ function AppContent() {
 
                       {/* Attendance Cards Grid — same experience as Sabha attendance */}
                       {sevaMembers.length === 0 ? (
-                        <div className="empty-state">
+                        <div className="empty-state" style={{ padding: '48px 24px', background: 'rgba(255,255,255,0.4)', borderRadius: 12, border: '1px dashed var(--glass-border-strong)' }}>
                           <div className="empty-state-icon">
                             <Users size={28} />
                           </div>
                           <p className="empty-state-title">કોઈ સેવા સભ્યો નોંધાયેલા નથી</p>
-                          <p className="empty-state-desc" style={{ marginBottom: 0 }}>હાજરી પૂરવા માટે પહેલા "સેવા સભ્યો સંચાલન" વિભાગમાંથી સભ્યો ઉમેરો.</p>
+                          <p className="empty-state-desc" style={{ marginBottom: 0 }}>હાજરી પૂરવા માટે પહેલા "સભ્યો" વિભાગમાંથી સભ્યો ઉમેરો.</p>
                         </div>
                       ) : (() => {
                         const filteredSevaMembers = sevaMembers.filter(m => {
@@ -2854,96 +2870,105 @@ function AppContent() {
                               return (
                                 <div
                                   key={m._id}
-                                  className="glass-card animate-fade-in"
+                                  className="animate-fade-in"
                                   style={{
                                     display: 'flex',
                                     flexDirection: 'column',
                                     gap: 12,
-                                    borderLeft: `3px solid ${isPresent ? 'var(--color-success)' : 'var(--color-danger)'}`,
-                                    background: isPresent ? 'rgba(16, 185, 129, 0.03)' : 'rgba(244, 63, 94, 0.02)'
+                                    padding: '12px 0',
+                                    borderBottom: '1px solid rgba(0,0,0,0.05)',
+                                    background: 'transparent',
                                   }}
                                 >
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                    <div style={{ minWidth: 0 }}>
-                                      <h4 style={{ fontWeight: 600, fontSize: '0.95rem', overflowWrap: 'anywhere' }}>{m.name}</h4>
-                                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                        <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{m.uniqueCode}</span>
-                                        <span className="badge badge-primary">{SEVA_CATEGORY_TAGS[m.type] || m.type}</span>
+                                  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                      <h4 style={{ fontWeight: 500, fontSize: '1.05rem', color: '#111', overflowWrap: 'anywhere', margin: 0 }}>{m.name}</h4>
+                                      <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        SMK ID: <span style={{ fontWeight: 600 }}>{m.uniqueCode}</span>
+                                        <span className="badge badge-primary" style={{ padding: '2px 6px', fontSize: '0.7rem' }}>{SEVA_CATEGORY_TAGS[m.type] || m.type}</span>
                                       </p>
                                     </div>
 
-                                    {/* Present / Absent Quick Buttons */}
-                                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                    {/* Present / Absent Buttons */}
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                                       <button
-                                        onClick={() => { if (!isPresent) toggleSevaAttendanceStatus(m._id); }}
+                                        onClick={() => {
+                                          if (!isPresent) {
+                                            toggleSevaAttendanceStatus(m._id);
+                                          }
+                                        }}
                                         style={{
-                                          border: 'none',
                                           borderRadius: '50%',
-                                          width: 40,
-                                          height: 40,
+                                          width: 36,
+                                          height: 36,
                                           display: 'flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
                                           cursor: 'pointer',
-                                          background: isPresent ? 'var(--color-success)' : 'rgba(255,255,255,0.05)',
-                                          color: isPresent ? '#fff' : 'var(--color-text-secondary)',
+                                          background: isPresent ? '#15803d' : '#dcfce7',
+                                          color: isPresent ? '#fff' : '#15803d',
+                                          border: 'none',
                                           transition: 'var(--transition-smooth)',
-                                          boxShadow: isPresent ? '0 2px 10px rgba(16,185,129,0.4)' : 'none'
                                         }}
-                                        title="હાજર"
+                                        title="હાજર (Present)"
                                         aria-label={`${m.name} હાજર`}
-                                        aria-pressed={isPresent}
                                       >
                                         <CheckCircle size={18} />
                                       </button>
+
                                       <button
-                                        onClick={() => { if (isPresent) toggleSevaAttendanceStatus(m._id); }}
+                                        onClick={() => {
+                                          if (isPresent) {
+                                            toggleSevaAttendanceStatus(m._id);
+                                          }
+                                        }}
                                         style={{
-                                          border: 'none',
                                           borderRadius: '50%',
-                                          width: 40,
-                                          height: 40,
+                                          width: 36,
+                                          height: 36,
                                           display: 'flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
                                           cursor: 'pointer',
-                                          background: !isPresent ? 'var(--color-danger)' : 'rgba(255,255,255,0.05)',
-                                          color: !isPresent ? '#fff' : 'var(--color-text-secondary)',
+                                          background: !isPresent ? '#dc2626' : '#fee2e2',
+                                          color: !isPresent ? '#fff' : '#dc2626',
+                                          border: 'none',
                                           transition: 'var(--transition-smooth)',
-                                          boxShadow: !isPresent ? '0 2px 10px rgba(244,63,94,0.35)' : 'none'
                                         }}
-                                        title="ગેરહાજર"
+                                        title="ગેરહાજર (Absent)"
                                         aria-label={`${m.name} ગેરહાજર`}
-                                        aria-pressed={!isPresent}
                                       >
-                                        <XCircle size={18} />
+                                        <X size={18} />
                                       </button>
                                     </div>
                                   </div>
 
-                                  {/* Seva hours input (shown when present) */}
+                                  {/* Ask for hours inline (shown when present) */}
                                   {isPresent && (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTop: '1px dashed var(--glass-border)', paddingTop: 8 }}>
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <Clock size={12} /> સેવાના કલાકો:
-                                      </span>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="24"
-                                        step="0.5"
-                                        className="glass-input"
-                                        style={{
-                                          width: 84,
-                                          textAlign: 'center',
-                                          padding: '6px 8px',
-                                          minHeight: 38,
-                                          fontSize: '0.85rem'
-                                        }}
-                                        value={rec.hours}
-                                        onChange={(e) => handleSevaHoursChange(m._id, e.target.value)}
-                                        aria-label={`${m.name} સેવાના કલાકો`}
-                                      />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px dashed var(--glass-border)', paddingTop: 8 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                          <Clock size={12} /> સેવાના કલાકો:
+                                        </span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="24"
+                                          step="0.5"
+                                          className="glass-input"
+                                          placeholder="કલાકો લખો..."
+                                          style={{
+                                            width: 100,
+                                            padding: '6px 10px',
+                                            minHeight: 34,
+                                            fontSize: '0.85rem',
+                                            borderRadius: 8
+                                          }}
+                                          value={rec.hours}
+                                          onChange={(e) => handleSevaHoursChange(m._id, e.target.value)}
+                                          aria-label={`${m.name} સેવાના કલાકો`}
+                                        />
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -2952,38 +2977,14 @@ function AppContent() {
                           </div>
                         );
                       })()}
-
-                      <button
-                        className="btn-primary"
-                        onClick={handleSaveSevaAttendance}
-                        disabled={savingSevaAttendance || sevaMembers.length === 0}
-                        style={{ alignSelf: 'flex-end', marginTop: 12 }}
-                      >
-                        {savingSevaAttendance ? <SpinnerLoader size={18} /> : <UserCheck size={18} />} હાજરી સબમિટ કરો
-                      </button>
-                    </>
+                    </div>
                   ) : (
-                    <div className="empty-state" style={{ padding: '80px 20px' }}>
-                      <div className="empty-state-icon">
-                        <Heart size={28} />
-                      </div>
-                      <p className="empty-state-title">કોઈ સેવા પસંદ કરેલી નથી</p>
-                      <p className="empty-state-desc">હાજરી પૂરવા માટે યાદીમાંથી સેવા પસંદ કરો અથવા નવી સેવા આયોજિત કરો.</p>
-                      <button
-                        className="btn-primary"
-                        onClick={() => {
-                          setSevaDate(new Date().toISOString().split('T')[0]);
-                          setSevaTypeId('');
-                          setSevaLeader('');
-                          setShowSevaModal(true);
-                        }}
-                      >
-                        <Plus size={16} /> નવી સેવા આયોજિત કરો
-                      </button>
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+                      <SpinnerLoader size={30} />
                     </div>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -3061,67 +3062,77 @@ function AppContent() {
                 </select>
               </div>
 
-              {/* Members Table */}
+              {/* Members Grid layout */}
               {loadingSevaMembers ? (
-                <SkeletonText rows={8} />
-              ) : (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>ક્રમ</th>
-                        <th>કોડ</th>
-                        <th>સભ્યનું નામ</th>
-                        <th>પ્રકાર</th>
-                        <th style={{ textAlign: 'right' }}>ક્રિયાઓ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sevaMembers
-                        .filter(m => {
-                          const matchesSearch = m.name.toLowerCase().includes(sevaMemberSearch.toLowerCase()) || m.uniqueCode.toLowerCase().includes(sevaMemberSearch.toLowerCase());
-                          const matchesType = sevaMemberTypeFilter === 'all' || m.type === sevaMemberTypeFilter;
-                          return matchesSearch && matchesType;
-                        })
-                        .map((m, idx) => (
-                          <tr key={m._id}>
-                            <td style={{ color: 'var(--color-text-secondary)' }}>{idx + 1}</td>
-                            <td style={{ fontWeight: 600, fontFamily: 'monospace' }}>{m.uniqueCode}</td>
-                            <td style={{ fontWeight: 600 }}>{m.name}</td>
-                            <td>
-                              <span className="badge badge-primary">{SEVA_CATEGORY_TAGS[m.type] || m.type}</span>
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                <button
-                                  className="icon-btn"
-                                  title="સુધારો"
-                                  aria-label={`${m.name} સુધારો`}
-                                  onClick={() => {
-                                    setEditingSevaMember(m);
-                                    setSevaMemberName(m.name);
-                                    setSevaMemberType(m.type);
-                                    setSevaMemberUniqueCode(m.uniqueCode);
-                                    setShowSevaMemberModal(true);
-                                  }}
-                                >
-                                  <Edit size={15} />
-                                </button>
-                                <button
-                                  className="icon-btn icon-btn-danger"
-                                  title="કાઢી નાખો"
-                                  aria-label={`${m.name} કાઢી નાખો`}
-                                  onClick={() => handleDeleteSevaMember(m._id)}
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
+                <div className="grid-3">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
                 </div>
+              ) : (
+                (() => {
+                  const filtered = sevaMembers.filter(m => {
+                    const matchesSearch = m.name.toLowerCase().includes(sevaMemberSearch.toLowerCase()) || m.uniqueCode.toLowerCase().includes(sevaMemberSearch.toLowerCase());
+                    const matchesType = sevaMemberTypeFilter === 'all' || m.type === sevaMemberTypeFilter;
+                    return matchesSearch && matchesType;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="glass-panel empty-state">
+                        <div className="empty-state-icon">
+                          <Search size={28} />
+                        </div>
+                        <p className="empty-state-title">કોઈ સભ્ય મળ્યો નથી</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid-3">
+                      {[...filtered].sort((a, b) => a.name.localeCompare(b.name, 'gu')).map(m => (
+                        <div key={m._id} className="glass-panel glass-panel-hover" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <span className="badge badge-primary">
+                                {SEVA_CATEGORY_TAGS[m.type] || m.type}
+                              </span>
+                              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: 8, overflowWrap: 'anywhere' }}>{m.name}</h3>
+                              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
+                                કોડ: {m.uniqueCode}
+                              </p>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                              <button
+                                className="icon-btn"
+                                title="સુધારો"
+                                aria-label={`${m.name} સુધારો`}
+                                onClick={() => {
+                                  setEditingSevaMember(m);
+                                  setSevaMemberName(m.name);
+                                  setSevaMemberType(m.type);
+                                  setSevaMemberUniqueCode(m.uniqueCode);
+                                  setShowSevaMemberModal(true);
+                                }}
+                              >
+                                <Edit size={15} />
+                              </button>
+                              <button
+                                className="icon-btn icon-btn-danger"
+                                title="કાઢી નાખો"
+                                aria-label={`${m.name} કાઢી નાખો`}
+                                onClick={() => handleDeleteSevaMember(m._id)}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
               )}
             </div>
           )}

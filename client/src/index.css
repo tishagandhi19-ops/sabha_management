@@ -510,8 +510,8 @@ input[type="number"].glass-input {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #131a2b;
-  color: var(--color-text-secondary);
+  background: var(--color-primary);
+  color: #ffffff;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: none;
