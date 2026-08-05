@@ -1682,6 +1682,50 @@ function AppContent() {
                     </div>
                   </div>
 
+                  {hasSabhaDraft && (
+                    <div style={{
+                      background: 'rgba(254, 240, 138, 0.3)',
+                      border: '1px solid rgba(202, 138, 4, 0.2)',
+                      borderRadius: 12,
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <AlertTriangle size={20} style={{ color: '#ca8a04', flexShrink: 0 }} />
+                        <div>
+                          <p style={{ fontWeight: 600, fontSize: '0.88rem', color: '#ca8a04', marginBottom: 2 }}>
+                            અણસાચવેલ સભા હાજરી ડ્રાફ્ટ મોજૂદ છે ({sabhaDraftCount} અણસાચવેલ ફેરફારો)
+                          </p>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginBottom: 0 }}>
+                            તમારો સભા ડ્રાફ્ટ સુરક્ષિત સાચવેલ છે. કૃપા કરીને હાજરી સબમિટ કરો અથવા ડ્રાફ્ટ રદ કરો.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="btn-primary"
+                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                          onClick={handleSubmitAttendance}
+                          disabled={savingAttendance}
+                        >
+                          {savingAttendance ? <SpinnerLoader size={14} /> : <UserCheck size={14} />} હવે સબમિટ કરો
+                        </button>
+                        <button
+                          className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                          onClick={handleDiscardSabhaDraft}
+                        >
+                          ડ્રાફ્ટ રદ કરો
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {savingAttendance && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
