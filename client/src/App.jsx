@@ -143,6 +143,8 @@ function AppContent() {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [loadingEventAttendance, setLoadingEventAttendance] = useState(false);
+  const [loadingSevaAttendance, setLoadingSevaAttendance] = useState(false);
 
   // Active Attendance Module State
   const [sabhaTab, setSabhaTab] = useState('savar_ni_katha'); // 'savar_ni_katha' | 'ravi_sabha'
@@ -572,6 +574,7 @@ function AppContent() {
   const loadSevaAttendance = async (sevaId) => {
     loadedSevaIdRef.current = null;
     setSelectedSevaId(sevaId);
+    setLoadingSevaAttendance(true);
     try {
       const data = await apiRequest(`/api/sevas/${sevaId}`);
       setActiveSevaData(data.seva);
@@ -617,6 +620,8 @@ function AppContent() {
       loadedSevaIdRef.current = sevaId;
     } catch (err) {
       triggerNotification(err.message, 'error');
+    } finally {
+      setLoadingSevaAttendance(false);
     }
   };
 
@@ -837,6 +842,7 @@ function AppContent() {
   const loadEventAttendance = async (eventId) => {
     loadedEventIdRef.current = null;
     setSelectedEventId(eventId);
+    setLoadingEventAttendance(true);
     try {
       const data = await apiRequest(`/api/events/${eventId}`);
       setActiveEventData(data.event);
@@ -913,6 +919,8 @@ function AppContent() {
       loadedEventIdRef.current = eventId;
     } catch (err) {
       triggerNotification(err.message, 'error');
+    } finally {
+      setLoadingEventAttendance(false);
     }
   };
 
@@ -1645,13 +1653,18 @@ function AppContent() {
                 <button
                   className="btn-primary btn-sm"
                   onClick={handleSubmitAttendance}
-                  disabled={savingAttendance || (activeEventData && members.length === 0)}
+                  disabled={savingAttendance || (activeEventData && members.length === 0) || loadingEventAttendance}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20 }}
                 >
                   {savingAttendance ? <SpinnerLoader size={16} /> : <UserCheck size={16} />} હાજરી સબમિટ કરો
                 </button>
               </div>
-              {activeEventData ? (
+              {loadingEventAttendance ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 24, textAlign: 'center', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+                  <SpinnerLoader size={36} />
+                  <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)' }}>ડેટા લોડ થઈ રહ્યો છે, કૃપા કરીને પ્રતીક્ષા કરો...</p>
+                </div>
+              ) : activeEventData ? (
                 <>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', margin: '4px 0 8px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: 12 }}>
@@ -2784,14 +2797,19 @@ function AppContent() {
                     <button
                       className="btn-primary btn-sm"
                       onClick={handleSaveSevaAttendance}
-                      disabled={savingSevaAttendance || (activeSevaData && sevaMembers.length === 0)}
+                      disabled={savingSevaAttendance || (activeSevaData && sevaMembers.length === 0) || loadingSevaAttendance}
                       style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 20 }}
                     >
                       {savingSevaAttendance ? <SpinnerLoader size={16} /> : <UserCheck size={16} />} હાજરી સબમિટ કરો
                     </button>
                   </div>
 
-                  {activeSevaData ? (
+                  {loadingSevaAttendance ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 24, textAlign: 'center', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
+                      <SpinnerLoader size={36} />
+                      <p style={{ fontSize: '0.95rem', color: 'var(--color-text-secondary)' }}>ડેટા લોડ થઈ રહ્યો છે, કૃપા કરીને પ્રતીક્ષા કરો...</p>
+                    </div>
+                  ) : activeSevaData ? (
                     <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
                       <div>
                         <h2 className="panel-title" style={{ fontSize: '1.4rem', fontWeight: 700, margin: '4px 0' }}>

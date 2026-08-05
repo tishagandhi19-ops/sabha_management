@@ -432,17 +432,35 @@ router.post('/:id/attendance', auth, async (req, res) => {
       return res.status(404).json({ msg: 'સેવા મળી નથી' });
     }
 
-    // Process each attendance record
-    const promises = attendanceRecords.map(async (record) => {
-      const { memberId, status, hours } = record;
-      return SevaAttendance.findOneAndUpdate(
-        { seva: sevaId, member: memberId },
-        { status, hours: status === 'present' ? (hours || 0) : 0 },
-        { upsert: true, new: true }
-      );
-    });
+    const operations = [];
 
-    await Promise.all(promises);
+    for (let record of attendanceRecords) {
+      const { memberId, status, hours } = record;
+      if (!memberId || !status) {
+        continue;
+      }
+
+      if (status === 'absent') {
+        operations.push({
+          deleteOne: {
+            filter: { seva: sevaId, member: memberId }
+          }
+        });
+      } else {
+        operations.push({
+          updateOne: {
+            filter: { seva: sevaId, member: memberId },
+            update: { $set: { status, hours: status === 'present' ? (hours || 0) : 0 } },
+            upsert: true
+          }
+        });
+      }
+    }
+
+    if (operations.length > 0) {
+      await SevaAttendance.bulkWrite(operations);
+    }
+
     res.json({ msg: 'હાજરી સફળતાપૂર્વક સાચવવામાં આવી છે' });
   } catch (err) {
     console.error(err.message);

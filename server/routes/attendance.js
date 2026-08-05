@@ -21,7 +21,7 @@ router.post('/bulk', auth, async (req, res) => {
       return res.status(404).json({ msg: 'સભા મળી નથી' });
     }
 
-    const savedRecords = [];
+    const operations = [];
 
     for (let record of records) {
       const { memberId, status, arrivalTime, isLate, remark } = record;
@@ -30,33 +30,37 @@ router.post('/bulk', auth, async (req, res) => {
         continue;
       }
 
-      const updateFields = { status };
-
-      if (status === 'present') {
-        updateFields.arrivalTime = arrivalTime ? new Date(arrivalTime) : new Date();
-        updateFields.isLate = !!isLate;
-        updateFields.remark = remark || '';
+      if (status === 'absent') {
+        operations.push({
+          deleteOne: {
+            filter: { event: eventId, member: memberId }
+          }
+        });
       } else {
-        // If absent, clear attendance metrics
-        updateFields.arrivalTime = null;
-        updateFields.isLate = false;
-        updateFields.remark = '';
+        const updateFields = {
+          status,
+          arrivalTime: status === 'present' ? (arrivalTime ? new Date(arrivalTime) : new Date()) : null,
+          isLate: status === 'present' ? !!isLate : false,
+          remark: remark || ''
+        };
+
+        operations.push({
+          updateOne: {
+            filter: { event: eventId, member: memberId },
+            update: { $set: updateFields },
+            upsert: true
+          }
+        });
       }
+    }
 
-      // Upsert: update if exists, insert if not
-      const updatedAttendance = await Attendance.findOneAndUpdate(
-        { event: eventId, member: memberId },
-        { $set: updateFields },
-        { upsert: true, new: true, runValidators: true }
-      );
-
-      savedRecords.push(updatedAttendance);
+    if (operations.length > 0) {
+      await Attendance.bulkWrite(operations);
     }
 
     res.json({
-      msg: 'હાજરી સફળતાપૂર્વક સાચવવામાં આવી છે', // "Attendance saved successfully"
-      count: savedRecords.length,
-      records: savedRecords
+      msg: 'હાજરી સફળતાપૂર્વક સાચવવામાં આવી છે',
+      count: operations.length
     });
   } catch (err) {
     console.error(err);
