@@ -1802,15 +1802,20 @@ function AppContent() {
 
                                   <button
                                     onClick={() => {
-                                      setAttendanceRecords(prev => ({
-                                        ...prev,
-                                        [member._id]: {
-                                          ...prev[member._id],
-                                          status: 'present',
-                                          arrivalTime: new Date(),
-                                          isLate: true,
-                                        }
-                                      }));
+                                      setAttendanceRecords(prev => {
+                                        const current = prev[member._id] || {};
+                                        const isAlreadyLate = current.status === 'present' && current.isLate;
+                                        return {
+                                          ...prev,
+                                          [member._id]: {
+                                            ...current,
+                                            status: 'present',
+                                            arrivalTime: current.arrivalTime || new Date(),
+                                            isLate: !isAlreadyLate,
+                                            remark: !isAlreadyLate ? (current.remark || '') : ''
+                                          }
+                                        };
+                                      });
                                     }}
                                     style={{
                                       borderRadius: '50%',
