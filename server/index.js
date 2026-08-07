@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import https from 'https';
 
 // Import Routes
 import authRoutes from './routes/auth.js';
@@ -27,10 +28,25 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/sevas', sevaRoutes);
 
+// Health check route
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date() });
+});
+
 // Base route
 app.get('/', (req, res) => {
   res.send('Sabha Management System API (સવારની કથા અને રવિસભા)');
 });
+
+// Self-ping Render URL every 5 minutes to prevent spin-down/sleep
+const RENDER_URL = 'https://sabha-management-4pe2.onrender.com/health';
+setInterval(() => {
+  https.get(RENDER_URL, (res) => {
+    console.log(`Self-ping to Render API status: ${res.statusCode}`);
+  }).on('error', (err) => {
+    console.error(`Self-ping to Render API failed:`, err.message);
+  });
+}, 5 * 60 * 1000); // 5 minutes
 
 // Database Connection
 const PORT = process.env.PORT || 5000;

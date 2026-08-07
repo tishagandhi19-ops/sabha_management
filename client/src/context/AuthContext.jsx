@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = 'https://sabha-management-4pe2.onrender.com';
 
 const AuthContext = createContext(null);
 
