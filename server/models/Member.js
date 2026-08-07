@@ -8,13 +8,18 @@ const MemberSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['kishor', 'yuva', 'proudh', 'vadil'],
+    enum: ['bal', 'kishor', 'yuva', 'proudh', 'vadil'],
     required: true
   },
   uniqueCode: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true,
+    trim: true
+  },
+  mobileNumber: {
+    type: String,
     trim: true
   },
   createdAt: {
@@ -24,3 +29,4 @@ const MemberSchema = new mongoose.Schema({
 });
 
 export default mongoose.model('Member', MemberSchema);
+

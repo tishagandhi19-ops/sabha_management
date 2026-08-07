@@ -8,13 +8,18 @@ const SevaMemberSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['kisori', 'yuvti', 'prutha', 'vadil'],
+    enum: ['bal', 'kisori', 'yuvti', 'prutha', 'vadil'],
     required: true
   },
   uniqueCode: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
+    sparse: true,
+    trim: true
+  },
+  mobileNumber: {
+    type: String,
     trim: true
   },
   createdAt: {
@@ -24,3 +29,4 @@ const SevaMemberSchema = new mongoose.Schema({
 });
 
 export default mongoose.model('SevaMember', SevaMemberSchema);
+

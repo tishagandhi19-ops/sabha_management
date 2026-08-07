@@ -119,14 +119,18 @@ router.get('/members', auth, async (req, res) => {
 
 // Create a new Seva member
 router.post('/members', auth, async (req, res) => {
-  const { name, type, uniqueCode } = req.body;
+  const { name, type, uniqueCode, mobileNumber } = req.body;
 
-  if (!name || !type || !uniqueCode) {
+  if (!name || !type) {
     return res.status(400).json({ msg: 'કૃપા કરીને બધી માહિતી ભરો' });
   }
 
   try {
-    let existingMember = await SevaMember.findOne({ uniqueCode: uniqueCode.trim() });
+    const finalUniqueCode = uniqueCode && uniqueCode.trim()
+      ? uniqueCode.trim()
+      : 'SEVA-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+
+    let existingMember = await SevaMember.findOne({ uniqueCode: finalUniqueCode });
     if (existingMember) {
       return res.status(400).json({ msg: 'આ યુનિક કોડ વાળો સભ્ય પહેલેથી જ અસ્તિત્વમાં છે' });
     }
@@ -134,7 +138,8 @@ router.post('/members', auth, async (req, res) => {
     const newMember = new SevaMember({
       name: name.trim(),
       type,
-      uniqueCode: uniqueCode.trim()
+      uniqueCode: finalUniqueCode,
+      mobileNumber: mobileNumber ? mobileNumber.trim() : undefined
     });
 
     const member = await newMember.save();
@@ -158,20 +163,23 @@ router.post('/members/bulk', auth, async (req, res) => {
     const errors = [];
 
     for (let index = 0; index < members.length; index++) {
-      const { name, type, uniqueCode } = members[index];
-      if (!name || !type || !uniqueCode) {
-        errors.push({ line: index + 1, msg: 'અપૂર્ણ માહિતી (નામ, પ્રકાર અથવા કોડ ગુમ છે)' });
+      const { name, type, uniqueCode, mobileNumber } = members[index];
+      if (!name || !type) {
+        errors.push({ line: index + 1, msg: 'અપૂર્ણ માહિતી (નામ અથવા પ્રકાર ગુમ છે)' });
         continue;
       }
 
-      const cleanCode = uniqueCode.toString().trim();
+      const cleanCode = uniqueCode && uniqueCode.toString().trim()
+        ? uniqueCode.toString().trim()
+        : 'SEVA-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+
       const existing = await SevaMember.findOne({ uniqueCode: cleanCode });
       if (existing) {
         errors.push({ line: index + 1, code: cleanCode, msg: `કોડ '${cleanCode}' પહેલેથી નોંધાયેલ છે` });
         continue;
       }
 
-      const validTypes = ['kisori', 'yuvti', 'prutha', 'vadil'];
+      const validTypes = ['bal', 'kisori', 'yuvti', 'prutha', 'vadil'];
       if (!validTypes.includes(type.toLowerCase())) {
         errors.push({ line: index + 1, msg: `અમાન્ય પ્રકાર: ${type}` });
         continue;
@@ -180,7 +188,8 @@ router.post('/members/bulk', auth, async (req, res) => {
       const newMember = new SevaMember({
         name: name.trim(),
         type: type.toLowerCase(),
-        uniqueCode: cleanCode
+        uniqueCode: cleanCode,
+        mobileNumber: mobileNumber ? mobileNumber.toString().trim() : undefined
       });
 
       const saved = await newMember.save();
@@ -201,12 +210,13 @@ router.post('/members/bulk', auth, async (req, res) => {
 
 // Update a Seva member
 router.put('/members/:id', auth, async (req, res) => {
-  const { name, type, uniqueCode } = req.body;
+  const { name, type, uniqueCode, mobileNumber } = req.body;
   
   const updateFields = {};
   if (name) updateFields.name = name.trim();
   if (type) updateFields.type = type;
   if (uniqueCode) updateFields.uniqueCode = uniqueCode.trim();
+  if (mobileNumber !== undefined) updateFields.mobileNumber = mobileNumber ? mobileNumber.trim() : '';
 
   try {
     let member = await SevaMember.findById(req.params.id);

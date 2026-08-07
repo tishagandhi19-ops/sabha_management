@@ -36,22 +36,27 @@ router.get('/', auth, async (req, res) => {
 // @desc    Create a new member
 // @access  Private (Admin)
 router.post('/', auth, async (req, res) => {
-  const { name, type, uniqueCode } = req.body;
+  const { name, type, uniqueCode, mobileNumber } = req.body;
 
-  if (!name || !type || !uniqueCode) {
+  if (!name || !type) {
     return res.status(400).json({ msg: 'કૃપા કરીને બધી માહિતી ભરો' });
   }
 
   try {
-    let existingMember = await Member.findOne({ uniqueCode: uniqueCode.trim() });
+    const finalUniqueCode = uniqueCode && uniqueCode.trim()
+      ? uniqueCode.trim()
+      : 'SMK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+
+    let existingMember = await Member.findOne({ uniqueCode: finalUniqueCode });
     if (existingMember) {
-      return res.status(400).json({ msg: 'આ યુનિક કોડ વાળો સભ્ય પહેલેથી જ અસ્તિત્વમાં છે' }); // "Member with this unique code already exists"
+      return res.status(400).json({ msg: 'આ યુનિક કોડ વાળો સભ્ય પહેલેથી જ અસ્તિત્વમાં છે' });
     }
 
     const newMember = new Member({
       name: name.trim(),
       type,
-      uniqueCode: uniqueCode.trim()
+      uniqueCode: finalUniqueCode,
+      mobileNumber: mobileNumber ? mobileNumber.trim() : undefined
     });
 
     const member = await newMember.save();
@@ -66,7 +71,7 @@ router.post('/', auth, async (req, res) => {
 // @desc    Bulk create members
 // @access  Private (Admin)
 router.post('/bulk', auth, async (req, res) => {
-  const { members } = req.body; // Array of { name, type, uniqueCode }
+  const { members } = req.body; // Array of { name, type, uniqueCode, mobileNumber }
 
   if (!members || !Array.isArray(members) || members.length === 0) {
     return res.status(400).json({ msg: 'અમાન્ય સભ્યોની લિસ્ટ' });
@@ -77,20 +82,23 @@ router.post('/bulk', auth, async (req, res) => {
     const errors = [];
 
     for (let index = 0; index < members.length; index++) {
-      const { name, type, uniqueCode } = members[index];
-      if (!name || !type || !uniqueCode) {
-        errors.push({ line: index + 1, msg: 'અપૂર્ણ માહિતી (નામ, પ્રકાર અથવા કોડ ગુમ છે)' });
+      const { name, type, uniqueCode, mobileNumber } = members[index];
+      if (!name || !type) {
+        errors.push({ line: index + 1, msg: 'અપૂર્ણ માહિતી (નામ અથવા પ્રકાર ગુમ છે)' });
         continue;
       }
 
-      const cleanCode = uniqueCode.toString().trim();
+      const cleanCode = uniqueCode && uniqueCode.toString().trim()
+        ? uniqueCode.toString().trim()
+        : 'SMK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+
       const existing = await Member.findOne({ uniqueCode: cleanCode });
       if (existing) {
         errors.push({ line: index + 1, code: cleanCode, msg: `કોડ '${cleanCode}' પહેલેથી નોંધાયેલ છે` });
         continue;
       }
 
-      const validTypes = ['kishor', 'yuva', 'proudh', 'vadil'];
+      const validTypes = ['bal', 'kishor', 'yuva', 'proudh', 'vadil'];
       if (!validTypes.includes(type.toLowerCase())) {
         errors.push({ line: index + 1, msg: `અમાન્ય પ્રકાર: ${type}` });
         continue;
@@ -99,7 +107,8 @@ router.post('/bulk', auth, async (req, res) => {
       const newMember = new Member({
         name: name.trim(),
         type: type.toLowerCase(),
-        uniqueCode: cleanCode
+        uniqueCode: cleanCode,
+        mobileNumber: mobileNumber ? mobileNumber.toString().trim() : undefined
       });
 
       const saved = await newMember.save();
@@ -122,12 +131,13 @@ router.post('/bulk', auth, async (req, res) => {
 // @desc    Update a member
 // @access  Private (Admin)
 router.put('/:id', auth, async (req, res) => {
-  const { name, type, uniqueCode } = req.body;
+  const { name, type, uniqueCode, mobileNumber } = req.body;
   
   const updateFields = {};
   if (name) updateFields.name = name.trim();
   if (type) updateFields.type = type;
   if (uniqueCode) updateFields.uniqueCode = uniqueCode.trim();
+  if (mobileNumber !== undefined) updateFields.mobileNumber = mobileNumber ? mobileNumber.trim() : '';
 
   try {
     let member = await Member.findById(req.params.id);

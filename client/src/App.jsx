@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import {
   Users,
   Calendar,
@@ -36,13 +37,15 @@ import {
 // Localization mapping for categories
 const CATEGORY_LABELS = {
   all: 'બધા સભ્યો',
-  kishor: 'કિશોર (૧૫-૨૨)',
-  yuva: 'યુવા (૨૨-૪૦)',
-  proudh: 'પ્રૌઢ (૪૦-૬૦)',
-  vadil: 'વડીલ (૬૦+)'
+  bal: 'બાળ (૧૪ થી નીચે)',
+  kishor: 'કિશોર (૧૪-૧૭)',
+  yuva: 'યુવા (૧૮-૫૦)',
+  proudh: 'પ્રૌઢ',
+  vadil: 'વડીલ (૫૦+)'
 };
 
 const CATEGORY_TAGS = {
+  bal: 'બાળ',
   kishor: 'કિશોર',
   yuva: 'યુવા',
   proudh: 'પ્રૌઢ',
@@ -51,13 +54,15 @@ const CATEGORY_TAGS = {
 
 const SEVA_CATEGORY_LABELS = {
   all: 'બધા સભ્યો',
-  kisori: 'કિશોરી (૧૫-૨૨)',
-  yuvti: 'યુવતી (૨૨-૪૦)',
-  prutha: 'પ્રૌઢા (૪૦-૬૦)',
-  vadil: 'વડીલ (૬૦+)'
+  bal: 'બાળ (૧૪ થી નીચે)',
+  kisori: 'કિશોરી (૧૪-૧૭)',
+  yuvti: 'યુવતી (૧૮-૫૦)',
+  prutha: 'પ્રૌઢા',
+  vadil: 'વડીલ (૫૦+)'
 };
 
 const SEVA_CATEGORY_TAGS = {
+  bal: 'બાળ',
   kisori: 'કિશોરી',
   yuvti: 'યુવતી',
   prutha: 'પ્રૌઢા',
@@ -79,6 +84,80 @@ const formatTime12h = (time24) => {
   hours = hours ? hours : 12; // the hour '0' should be '12'
   const paddedHours = String(hours).padStart(2, '0');
   return `${paddedHours}:${minutes} ${ampm}`;
+};
+
+const parseExcelMembers = (file, isSeva) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+
+        if (rows.length > 0) {
+          const hasGenderColumn = Object.keys(rows[0]).some(k => /[gz]ender/i.test(k) || /sex/i.test(k) || /જાતિ/i.test(k));
+          if (!hasGenderColumn) {
+            throw new Error('એક્સેલ ફાઇલમાં Gender/Zender (જાતિ) કોલમ હોવી જરૂરી છે.');
+          }
+        }
+
+        const mapped = rows.map((row) => {
+          const findValue = (regexes) => {
+            for (const regex of regexes) {
+              const key = Object.keys(row).find(k => regex.test(k));
+              if (key !== undefined) return row[key];
+            }
+            return undefined;
+          };
+
+          const genderVal = findValue([/[gz]ender/i, /sex/i, /જાતિ/i]);
+          const gStr = genderVal ? genderVal.toString().trim().toLowerCase() : '';
+          const isMale = gStr.startsWith('m') || gStr === 'purush' || gStr === 'પુરુષ' || gStr === 'પુરૂષ';
+          const isFemale = gStr.startsWith('f') || gStr === 'stri' || gStr === 'સ્ત્રી';
+
+          if (isSeva && !isFemale) return null;
+          if (!isSeva && !isMale) return null;
+
+          const nameVal = findValue([/fullnameguj/i, /name/i]);
+          const ageVal = findValue([/age/i]);
+          const mobileVal = findValue([/mobile\s*no\s*1/i, /mobile/i, /phone/i]);
+          const smkVal = findValue([/smk/i, /uniquecode/i, /code/i]);
+
+          let type = isSeva ? 'yuvti' : 'yuva';
+          if (ageVal !== undefined && ageVal !== null && ageVal !== '') {
+            const age = parseInt(ageVal, 10);
+            if (!isNaN(age)) {
+              if (age < 14) {
+                type = 'bal';
+              } else if (age >= 14 && age <= 17) {
+                type = isSeva ? 'kisori' : 'kishor';
+              } else if (age >= 18 && age <= 50) {
+                type = isSeva ? 'yuvti' : 'yuva';
+              } else if (age > 50) {
+                type = 'vadil';
+              }
+            }
+          }
+
+          return {
+            name: nameVal ? nameVal.toString().trim() : '',
+            type: type,
+            uniqueCode: smkVal ? smkVal.toString().trim() : '',
+            mobileNumber: mobileVal ? mobileVal.toString().trim() : ''
+          };
+        }).filter(m => m !== null && m.name !== '');
+
+        resolve(mapped);
+      } catch (err) {
+        reject(new Error(err.message));
+      }
+    };
+    reader.onerror = () => reject(new Error('ફાઇલ લોડ કરવામાં ભૂલ આવી'));
+    reader.readAsArrayBuffer(file);
+  });
 };
 
 function AppContent() {
@@ -217,6 +296,10 @@ function AppContent() {
   const [memberName, setMemberName] = useState('');
   const [memberType, setMemberType] = useState('yuva');
   const [memberCode, setMemberCode] = useState('');
+  const [memberMobileNumber, setMemberMobileNumber] = useState('');
+  const [bulkImportTab, setBulkImportTab] = useState('excel'); // 'excel' | 'text'
+  const [parsedExcelMembers, setParsedExcelMembers] = useState([]);
+  const [excelFileName, setExcelFileName] = useState('');
   const [submittingMember, setSubmittingMember] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [memberTypeFilter, setMemberTypeFilter] = useState('all');
@@ -236,6 +319,10 @@ function AppContent() {
   const [sevaMemberName, setSevaMemberName] = useState('');
   const [sevaMemberType, setSevaMemberType] = useState('yuvti');
   const [sevaMemberUniqueCode, setSevaMemberUniqueCode] = useState('');
+  const [sevaMemberMobileNumber, setSevaMemberMobileNumber] = useState('');
+  const [bulkSevaImportTab, setBulkSevaImportTab] = useState('excel'); // 'excel' | 'text'
+  const [parsedExcelSevaMembers, setParsedExcelSevaMembers] = useState([]);
+  const [excelSevaFileName, setExcelSevaFileName] = useState('');
   const [submittingSevaMember, setSubmittingSevaMember] = useState(false);
   const [sevaMemberSearch, setSevaMemberSearch] = useState('');
   const [sevaMemberTypeFilter, setSevaMemberTypeFilter] = useState('all');
@@ -465,8 +552,8 @@ function AppContent() {
   // Add or Edit Seva Member
   const handleSaveSevaMember = async (e) => {
     e.preventDefault();
-    if (!sevaMemberName.trim() || !sevaMemberUniqueCode.trim()) {
-      triggerNotification('કૃપા કરીને બધી માહિતી ભરો', 'warning');
+    if (!sevaMemberName.trim()) {
+      triggerNotification('કૃપા કરીને નામ દાખલ કરો', 'warning');
       return;
     }
 
@@ -475,7 +562,8 @@ function AppContent() {
       const payload = {
         name: sevaMemberName.trim(),
         type: sevaMemberType,
-        uniqueCode: sevaMemberUniqueCode.trim()
+        uniqueCode: sevaMemberUniqueCode.trim(),
+        mobileNumber: sevaMemberMobileNumber
       };
 
       if (editingSevaMember) {
@@ -495,6 +583,7 @@ function AppContent() {
       setShowSevaMemberModal(false);
       setSevaMemberName('');
       setSevaMemberUniqueCode('');
+      setSevaMemberMobileNumber('');
       setEditingSevaMember(null);
       fetchSevaMembers();
     } catch (err) {
@@ -562,6 +651,54 @@ function AppContent() {
       setBulkSevaMemberResult(res);
       triggerNotification(`${res.successCount} સેવા સભ્યો સફળતાપૂર્વક ઉમેરાયા!`);
       setBulkSevaMemberText('');
+      fetchSevaMembers();
+    } catch (err) {
+      triggerNotification(err.message, 'error');
+    } finally {
+      setImportingBulkSevaMember(false);
+    }
+  };
+
+  // Handle Excel file selection for seva members
+  const handleExcelSevaFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setExcelSevaFileName(file.name);
+    setBulkSevaMemberResult(null);
+    try {
+      const parsed = await parseExcelMembers(file, true);
+      setParsedExcelSevaMembers(parsed);
+      triggerNotification(`${parsed.length} સેવા સભ્યો ફાઇલમાં જોવા મળ્યા.`, 'info');
+    } catch (err) {
+      triggerNotification(err.message, 'error');
+      setExcelSevaFileName('');
+      setParsedExcelSevaMembers([]);
+    }
+  };
+
+  // Submit bulk Excel parsed list for seva members
+  const handleBulkExcelSevaImport = async () => {
+    if (parsedExcelSevaMembers.length === 0) {
+      triggerNotification('કોઈ યોગ્ય માહિતી અપલોડ કરવા માટે નથી', 'warning');
+      return;
+    }
+
+    setImportingBulkSevaMember(true);
+    setBulkSevaMemberImportProgress(20);
+    setBulkSevaMemberResult(null);
+
+    try {
+      setBulkSevaMemberImportProgress(50);
+      const res = await apiRequest('/api/sevas/members/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ members: parsedExcelSevaMembers })
+      });
+
+      setBulkSevaMemberImportProgress(100);
+      setBulkSevaMemberResult(res);
+      triggerNotification(`${res.successCount} સેવા સભ્યો સફળતાપૂર્વક ઉમેરાયા!`);
+      setParsedExcelSevaMembers([]);
+      setExcelSevaFileName('');
       fetchSevaMembers();
     } catch (err) {
       triggerNotification(err.message, 'error');
@@ -1039,7 +1176,8 @@ function AppContent() {
       const body = {
         name: memberName,
         type: memberType,
-        uniqueCode: memberCode
+        uniqueCode: memberCode,
+        mobileNumber: memberMobileNumber
       };
 
       if (editingMember) {
@@ -1060,6 +1198,7 @@ function AppContent() {
       setEditingMember(null);
       setMemberName('');
       setMemberCode('');
+      setMemberMobileNumber('');
       fetchMembers();
       fetchDashboardStats();
     } catch (err) {
@@ -1075,6 +1214,7 @@ function AppContent() {
     setMemberName(member.name);
     setMemberType(member.type);
     setMemberCode(member.uniqueCode);
+    setMemberMobileNumber(member.mobileNumber || '');
     setShowMemberModal(true);
   };
 
@@ -1319,6 +1459,55 @@ function AppContent() {
       setBulkResult(res);
       triggerNotification(`${res.successCount} સભ્યો સફળતાપૂર્વક ઉમેરાયા!`);
       setBulkText('');
+      fetchMembers();
+      fetchDashboardStats();
+    } catch (err) {
+      triggerNotification(err.message, 'error');
+    } finally {
+      setImportingBulk(false);
+    }
+  };
+
+  // Handle Excel file selection for normal members
+  const handleExcelFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setExcelFileName(file.name);
+    setBulkResult(null);
+    try {
+      const parsed = await parseExcelMembers(file, false);
+      setParsedExcelMembers(parsed);
+      triggerNotification(`${parsed.length} સભ્યો ફાઇલમાં જોવા મળ્યા.`, 'info');
+    } catch (err) {
+      triggerNotification(err.message, 'error');
+      setExcelFileName('');
+      setParsedExcelMembers([]);
+    }
+  };
+
+  // Submit bulk Excel parsed list for normal members
+  const handleBulkExcelImport = async () => {
+    if (parsedExcelMembers.length === 0) {
+      triggerNotification('કોઈ યોગ્ય માહિતી અપલોડ કરવા માટે નથી', 'warning');
+      return;
+    }
+
+    setImportingBulk(true);
+    setBulkImportProgress(20);
+    setBulkResult(null);
+
+    try {
+      setBulkImportProgress(50);
+      const res = await apiRequest('/api/members/bulk', {
+        method: 'POST',
+        body: JSON.stringify({ members: parsedExcelMembers })
+      });
+
+      setBulkImportProgress(100);
+      setBulkResult(res);
+      triggerNotification(`${res.successCount} સભ્યો સફળતાપૂર્વક ઉમેરાયા!`);
+      setParsedExcelMembers([]);
+      setExcelFileName('');
       fetchMembers();
       fetchDashboardStats();
     } catch (err) {
@@ -1830,13 +2019,6 @@ function AppContent() {
                                   <button
                                     onClick={() => {
                                       markAttendance(member._id, 'present');
-                                      setAttendanceRecords(prev => ({
-                                        ...prev,
-                                        [member._id]: {
-                                          ...prev[member._id],
-                                          isLate: false
-                                        }
-                                      }));
                                     }}
                                     style={{
                                       borderRadius: '50%',
@@ -2072,6 +2254,11 @@ function AppContent() {
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                         કોડ: {member.uniqueCode}
                       </p>
+                      {member.mobileNumber && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                          મોબાઈલ: <span style={{ fontWeight: 600 }}>{member.mobileNumber}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -3168,6 +3355,11 @@ function AppContent() {
                               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                                 કોડ: {m.uniqueCode}
                               </p>
+                              {m.mobileNumber && (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                                  મોબાઈલ: <span style={{ fontWeight: 600 }}>{m.mobileNumber}</span>
+                                </p>
+                              )}
                             </div>
 
                             <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
@@ -3180,6 +3372,7 @@ function AppContent() {
                                   setSevaMemberName(m.name);
                                   setSevaMemberType(m.type);
                                   setSevaMemberUniqueCode(m.uniqueCode);
+                                  setSevaMemberMobileNumber(m.mobileNumber || '');
                                   setShowSevaMemberModal(true);
                                 }}
                               >
@@ -3676,22 +3869,33 @@ function AppContent() {
                     onChange={(e) => setSevaMemberType(e.target.value)}
                     required
                   >
-                    <option value="kisori">કિશોરી</option>
-                    <option value="yuvti">યુવતી</option>
+                    <option value="bal">બાળ (૧૪ થી નીચે)</option>
+                    <option value="kisori">કિશોરી (૧૪-૧૭)</option>
+                    <option value="yuvti">યુવતી (૧૮-૫૦)</option>
                     <option value="prutha">પ્રૌઢા</option>
-                    <option value="vadil">વડીલ</option>
+                    <option value="vadil">વડીલ (૫૦+)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="form-label">યુનિક આઈડી કોડ (Unique ID Code)</label>
+                  <label className="form-label">યુનિક આઈડી કોડ (Unique ID Code) (વૈકલ્પિક)</label>
                   <input
                     type="text"
                     className="glass-input"
                     placeholder="SEVA001"
                     value={sevaMemberUniqueCode}
                     onChange={(e) => setSevaMemberUniqueCode(e.target.value)}
-                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">મોબાઈલ નંબર (Mobile Number) (વૈકલ્પિક)</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="મોબાઈલ નંબર લખો"
+                    value={sevaMemberMobileNumber}
+                    onChange={(e) => setSevaMemberMobileNumber(e.target.value)}
                   />
                 </div>
 
@@ -3712,8 +3916,8 @@ function AppContent() {
         showBulkSevaMemberModal && (
           <div className="modal-overlay" role="dialog" aria-modal="true">
             <div className="modal-panel" style={{ maxWidth: 650, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div className="modal-header" style={{ marginBottom: 0 }}>
-                <h3 className="modal-title">સેવા સભ્યો બલ્ક કોપી-પેસ્ટ અપલોડ</h3>
+              <div className="modal-header" style={{ marginBottom: 16 }}>
+                <h3 className="modal-title">એકસાથે સેવા સભ્યો ઉમેરો (બલ્ક અપલોડ)</h3>
                 <button
                   className="icon-btn"
                   onClick={() => setShowBulkSevaMemberModal(false)}
@@ -3723,26 +3927,135 @@ function AppContent() {
                 </button>
               </div>
 
-              <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)' }}>
-                <p style={{ fontSize: '0.8rem', lineHeight: '1.6', color: 'var(--color-text-secondary)' }}>
-                  <strong>નિયમો અને ફોર્મેટ:</strong><br />
-                  ૧. દરેક લાઈનમાં એક સભ્યની માહિતી હોવી જોઈએ.<br />
-                  ૨. માહિતીનો ક્રમ: <strong>નામ, પ્રકાર, યુનિક કોડ</strong> (અલ્પવિરામ <code>,</code> થી અલગ કરેલ).<br />
-                  ૩. પ્રકાર (Category) માટે આ શબ્દો વાપરો: <code>kisori</code> (કિશોરી), <code>yuvti</code> (યુવતી), <code>prutha</code> (પ્રૌઢા), <code>vadil</code> (વડીલ).<br />
-                  <strong>ઉદાહરણ:</strong><br />
-                  <code>પૂર્વી શાહ, yuvti, SM001</code><br />
-                  <code>જાનકી દેસાઈ, kisori, SM002</code>
-                </p>
+              <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: 16 }}>
+                <button
+                  type="button"
+                  className={`tab-btn ${bulkSevaImportTab === 'excel' ? 'active' : ''}`}
+                  onClick={() => setBulkSevaImportTab('excel')}
+                  style={{
+                    padding: '10px 16px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderBottom: bulkSevaImportTab === 'excel' ? '2px solid var(--color-primary)' : 'none',
+                    color: bulkSevaImportTab === 'excel' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    fontWeight: bulkSevaImportTab === 'excel' ? 600 : 400,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Excel ફાઇલ અપલોડ
+                </button>
+                <button
+                  type="button"
+                  className={`tab-btn ${bulkSevaImportTab === 'text' ? 'active' : ''}`}
+                  onClick={() => setBulkSevaImportTab('text')}
+                  style={{
+                    padding: '10px 16px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderBottom: bulkSevaImportTab === 'text' ? '2px solid var(--color-primary)' : 'none',
+                    color: bulkSevaImportTab === 'text' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    fontWeight: bulkSevaImportTab === 'text' ? 600 : 400,
+                    cursor: 'pointer'
+                  }}
+                >
+                  કોપી-પેસ્ટ લખાણ
+                </button>
               </div>
 
-              <textarea
-                className="glass-input"
-                rows={8}
-                placeholder="અહીં સભ્યોની વિગતો પેસ્ટ કરો..."
-                value={bulkSevaMemberText}
-                onChange={(e) => setBulkSevaMemberText(e.target.value)}
-                style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
-              />
+              {bulkSevaImportTab === 'excel' && (
+                <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)' }}>
+                  <p style={{ fontSize: '0.8rem', lineHeight: '1.6', color: 'var(--color-text-secondary)' }}>
+                    <strong>એક્સેલ શીટ ફોર્મેટ સૂચના:</strong> એક્સેલમાં આ કોલમ હોવી જરૂરી છે: <br />
+                    - <code>FullNameGuj</code> (નામ માટે) <br />
+                    - <code>Age</code> (ઉંમર માટે) <br />
+                    - <code>mobile no 1</code> (મોબાઈલ નંબર - વૈકલ્પિક) <br />
+                    - <code>SMK</code> (યુનિક કોડ - વૈકલ્પિક)
+                  </p>
+                </div>
+              )}
+
+              {bulkSevaImportTab === 'text' && (
+                <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)' }}>
+                  <p style={{ fontSize: '0.8rem', lineHeight: '1.6', color: 'var(--color-text-secondary)' }}>
+                    <strong>નિયમો અને ફોર્મેટ:</strong><br />
+                    ૧. દરેક લાઈનમાં એક સભ્યની માહિતી હોવી જોઈએ.<br />
+                    ૨. માહિતીનો ક્રમ: <strong>નામ, પ્રકાર, યુનિક કોડ</strong> (અલ્પવિરામ <code>,</code> થી અલગ કરેલ).<br />
+                    ૩. પ્રકાર (Category) માટે આ શબ્દો વાપરો: <code>kisori</code> (કિશોરી), <code>yuvti</code> (યુવતી), <code>prutha</code> (પ્રૌઢા), <code>vadil</code> (વડીલ).<br />
+                    <strong>ઉદાહરણ:</strong><br />
+                    <code>પૂર્વી શાહ, yuvti, SM001</code><br />
+                    <code>જાનકી દેસાઈ, kisori, SM002</code>
+                  </p>
+                </div>
+              )}
+
+              {bulkSevaImportTab === 'excel' && (
+                <div>
+                  <div
+                    style={{
+                      border: '2px dashed rgba(255,255,255,0.15)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '30px 20px',
+                      textAlign: 'center',
+                      background: 'rgba(255,255,255,0.01)',
+                      cursor: 'pointer',
+                      marginBottom: 16,
+                      position: 'relative'
+                    }}
+                    onClick={() => document.getElementById('excel-seva-file-input').click()}
+                  >
+                    <input
+                      id="excel-seva-file-input"
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleExcelSevaFileChange}
+                      style={{ display: 'none' }}
+                      disabled={importingBulkSevaMember}
+                    />
+                    <FileSpreadsheet size={32} style={{ color: 'var(--color-primary)', marginBottom: 8, opacity: 0.8 }} />
+                    {excelSevaFileName ? (
+                      <div>
+                        <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-success)' }}>{excelSevaFileName}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ક્લિક કરી નવી ફાઈલ પસંદ કરો</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>એક્સેલ ફાઇલ પસંદ કરવા અહીં ક્લિક કરો</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>સપોર્ટેડ ફોર્મેટ: .xlsx, .xls</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {parsedExcelSevaMembers.length > 0 && (
+                    <div style={{ maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 'var(--radius-sm)', marginBottom: 16 }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                        અપલોડ માટે તૈયાર સેવા સભ્યોની લિસ્ટ ({parsedExcelSevaMembers.length}):
+                      </p>
+                      {parsedExcelSevaMembers.slice(0, 5).map((m, idx) => (
+                        <div key={idx} style={{ fontSize: '0.75rem', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{idx + 1}. {m.name} ({SEVA_CATEGORY_TAGS[m.type] || m.type})</span>
+                          <span style={{ color: 'var(--color-text-muted)' }}>{m.uniqueCode || 'ઓટો કોડ'} | {m.mobileNumber || 'મોબાઈલ નથી'}</span>
+                        </div>
+                      ))}
+                      {parsedExcelSevaMembers.length > 5 && (
+                        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 4 }}>
+                          ...અને બીજા {parsedExcelSevaMembers.length - 5} સેવા સભ્યો
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {bulkSevaImportTab === 'text' && (
+                <textarea
+                  className="glass-input"
+                  rows={8}
+                  placeholder="અહીં સભ્યોની વિગતો પેસ્ટ કરો..."
+                  value={bulkSevaMemberText}
+                  onChange={(e) => setBulkSevaMemberText(e.target.value)}
+                  style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+                />
+              )}
 
               {importingBulkSevaMember && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -3782,8 +4095,8 @@ function AppContent() {
                 </button>
                 <button
                   className="btn-primary"
-                  onClick={handleBulkSevaMemberImport}
-                  disabled={importingBulkSevaMember}
+                  onClick={bulkSevaImportTab === 'excel' ? handleBulkExcelSevaImport : handleBulkSevaMemberImport}
+                  disabled={importingBulkSevaMember || (bulkSevaImportTab === 'excel' ? parsedExcelSevaMembers.length === 0 : !bulkSevaMemberText.trim())}
                 >
                   {importingBulkSevaMember ? <SpinnerLoader size={20} /> : 'અપલોડ શરૂ કરો'}
                 </button>
@@ -3831,22 +4144,33 @@ function AppContent() {
                     value={memberType}
                     onChange={(e) => setMemberType(e.target.value)}
                   >
-                    <option value="kishor">કિશોર (૧૫-૨૨)</option>
-                    <option value="yuva">યુવા (૨૨-૪૦)</option>
-                    <option value="proudh">પ્રૌઢ (૪૦-૬૦)</option>
-                    <option value="vadil">વડીલ (૬૦+)</option>
+                    <option value="bal">બાળ (૧૪ થી નીચે)</option>
+                    <option value="kishor">કિશોર (૧૪-૧૭)</option>
+                    <option value="yuva">યુવા (૧૮-૫૦)</option>
+                    <option value="proudh">પ્રૌઢ</option>
+                    <option value="vadil">વડીલ (૫૦+)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="form-label">યુનિક આઈડી કોડ (Unique Code)</label>
+                  <label className="form-label">યુનિક આઈડી કોડ (Unique Code) (વૈકલ્પિક)</label>
                   <input
                     type="text"
                     className="glass-input"
                     placeholder="ઉદા. YG01"
                     value={memberCode}
                     onChange={(e) => setMemberCode(e.target.value)}
-                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">મોબાઈલ નંબર (Mobile Number) (વૈકલ્પિક)</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="મોબાઈલ નંબર લખો"
+                    value={memberMobileNumber}
+                    onChange={(e) => setMemberMobileNumber(e.target.value)}
                   />
                 </div>
 
@@ -3880,18 +4204,67 @@ function AppContent() {
                 </button>
               </div>
 
-              <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 14 }}>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-                  <strong>ફોર્મેટ સૂચના:</strong> નીચેના બોક્સમાં દરેક લાઈનમાં એક સભ્યની વિગત આ ક્રમમાં લખો: <br />
-                  <code style={{ background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, display: 'inline-block', margin: '4px 0', fontFamily: 'monospace' }}>નામ, પ્રકાર, યુનિક કોડ</code> <br />
-                  પ્રકારમાં માત્ર <strong>kishor, yuva, proudh, vadil</strong> માંથી જ લખવું. <br />
-                  <em>ઉદાહરણ:</em> <br />
-                  <code style={{ color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
-                    યશ ગાંધી, yuva, YG01 <br />
-                    અમિત પટેલ, kishor, KP02
-                  </code>
-                </p>
+              <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: 16 }}>
+                <button
+                  type="button"
+                  className={`tab-btn ${bulkImportTab === 'excel' ? 'active' : ''}`}
+                  onClick={() => setBulkImportTab('excel')}
+                  style={{
+                    padding: '10px 16px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderBottom: bulkImportTab === 'excel' ? '2px solid var(--color-primary)' : 'none',
+                    color: bulkImportTab === 'excel' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    fontWeight: bulkImportTab === 'excel' ? 600 : 400,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Excel ફાઇલ અપલોડ
+                </button>
+                <button
+                  type="button"
+                  className={`tab-btn ${bulkImportTab === 'text' ? 'active' : ''}`}
+                  onClick={() => setBulkImportTab('text')}
+                  style={{
+                    padding: '10px 16px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderBottom: bulkImportTab === 'text' ? '2px solid var(--color-primary)' : 'none',
+                    color: bulkImportTab === 'text' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                    fontWeight: bulkImportTab === 'text' ? 600 : 400,
+                    cursor: 'pointer'
+                  }}
+                >
+                  કોપી-પેસ્ટ લખાણ
+                </button>
               </div>
+
+              {bulkImportTab === 'excel' && (
+                <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 14 }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                    <strong>એક્સેલ શીટ ફોર્મેટ સૂચના:</strong> એક્સેલમાં આ કોલમ હોવી જરૂરી છે: <br />
+                    - <code>FullNameGuj</code> (નામ માટે) <br />
+                    - <code>Age</code> (ઉંમર માટે) <br />
+                    - <code>mobile no 1</code> (મોબાઈલ નંબર - વૈકલ્પિક) <br />
+                    - <code>SMK</code> (યુનિક કોડ - વૈકલ્પિક)
+                  </p>
+                </div>
+              )}
+
+              {bulkImportTab === 'text' && (
+                <div style={{ background: 'var(--tint-info)', borderLeft: '3px solid var(--color-info)', padding: '12px 14px', borderRadius: 'var(--radius-sm)', marginBottom: 14 }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                    <strong>ફોર્મેટ સૂચના:</strong> નીચેના બોક્સમાં દરેક લાઈનમાં એક સભ્યની વિગત આ ક્રમમાં લખો: <br />
+                    <code style={{ background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4, display: 'inline-block', margin: '4px 0', fontFamily: 'monospace' }}>નામ, પ્રકાર, યુનિક કોડ</code> <br />
+                    પ્રકારમાં માત્ર <strong>kishor, yuva, proudh, vadil</strong> માંથી જ લખવું. <br />
+                    <em>ઉદાહરણ:</em> <br />
+                    <code style={{ color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                      યશ ગાંધી, yuva, YG01 <br />
+                      અમિત પટેલ, kishor, KP02
+                    </code>
+                  </p>
+                </div>
+              )}
 
               {importingBulk && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
@@ -3929,19 +4302,84 @@ function AppContent() {
                 </div>
               )}
 
-              <textarea
-                rows={8}
-                className="glass-input"
-                placeholder="નામ, પ્રકાર, કોડ..."
-                style={{ fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', marginBottom: 16 }}
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                disabled={importingBulk}
-              />
+              {bulkImportTab === 'excel' && (
+                <div>
+                  <div
+                    style={{
+                      border: '2px dashed rgba(255,255,255,0.15)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '30px 20px',
+                      textAlign: 'center',
+                      background: 'rgba(255,255,255,0.01)',
+                      cursor: 'pointer',
+                      marginBottom: 16,
+                      position: 'relative'
+                    }}
+                    onClick={() => document.getElementById('excel-file-input').click()}
+                  >
+                    <input
+                      id="excel-file-input"
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleExcelFileChange}
+                      style={{ display: 'none' }}
+                      disabled={importingBulk}
+                    />
+                    <FileSpreadsheet size={32} style={{ color: 'var(--color-primary)', marginBottom: 8, opacity: 0.8 }} />
+                    {excelFileName ? (
+                      <div>
+                        <p style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-success)' }}>{excelFileName}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>ક્લિક કરી નવી ફાઈલ પસંદ કરો</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ fontSize: '0.9rem', fontWeight: 500 }}>એક્સેલ ફાઇલ પસંદ કરવા અહીં ક્લિક કરો</p>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>સપોર્ટેડ ફોર્મેટ: .xlsx, .xls</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {parsedExcelMembers.length > 0 && (
+                    <div style={{ maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 'var(--radius-sm)', marginBottom: 16 }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                        અપલોડ માટે તૈયાર સભ્યોની લિસ્ટ ({parsedExcelMembers.length}):
+                      </p>
+                      {parsedExcelMembers.slice(0, 5).map((m, idx) => (
+                        <div key={idx} style={{ fontSize: '0.75rem', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{idx + 1}. {m.name} ({CATEGORY_TAGS[m.type] || m.type})</span>
+                          <span style={{ color: 'var(--color-text-muted)' }}>{m.uniqueCode || 'ઓટો કોડ'} | {m.mobileNumber || 'મોબાઈલ નથી'}</span>
+                        </div>
+                      ))}
+                      {parsedExcelMembers.length > 5 && (
+                        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 4 }}>
+                          ...અને બીજા {parsedExcelMembers.length - 5} સભ્યો
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {bulkImportTab === 'text' && (
+                <textarea
+                  rows={8}
+                  className="glass-input"
+                  placeholder="નામ, પ્રકાર, કોડ..."
+                  style={{ fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', marginBottom: 16 }}
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  disabled={importingBulk}
+                />
+              )}
 
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button type="button" className="btn-secondary" onClick={() => setShowBulkModal(false)} disabled={importingBulk}>રદ કરો</button>
-                <button type="button" className="btn-primary" onClick={handleBulkImport} disabled={importingBulk || !bulkText.trim()}>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={bulkImportTab === 'excel' ? handleBulkExcelImport : handleBulkImport}
+                  disabled={importingBulk || (bulkImportTab === 'excel' ? parsedExcelMembers.length === 0 : !bulkText.trim())}
+                >
                   {importingBulk ? <SpinnerLoader size={16} /> : 'સબમિટ કરો'}
                 </button>
               </div>
