@@ -1545,3 +1545,14 @@ input[type="number"].glass-input {
 .print-container {
   display: none;
 }
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(30px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}

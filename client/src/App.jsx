@@ -33,6 +33,7 @@ import {
   SkeletonText,
   ShimmerOverlay
 } from './components/Loaders';
+import InstallPWA from './components/InstallPWA';
 
 // Localization mapping for categories
 const CATEGORY_LABELS = {
@@ -4927,6 +4928,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <InstallPWA />
     </AuthProvider>
   );
 }
