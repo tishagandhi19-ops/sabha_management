@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 
-const BASE_URL = 'https://sabha-management-4pe2.onrender.com';
+// Backend API URL: Backend runs on port 5000 locally
+const BASE_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://sabha-management-4pe2.onrender.com');
 
 const AuthContext = createContext(null);
 

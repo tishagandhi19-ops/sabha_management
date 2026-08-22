@@ -20,7 +20,8 @@ import {
   Heart,
   X,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  Printer
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useAttendanceDraft } from './hooks/useAttendanceDraft';
@@ -285,6 +286,7 @@ function AppContent() {
   const [reportsSubTab, setReportsSubTab] = useState('profile'); // 'profile' | 'leaderboard' | 'particular'
   const [topAttendeesData, setTopAttendeesData] = useState(null);
   const [loadingTopAttendees, setLoadingTopAttendees] = useState(false);
+  const [leaderboardTypeFilter, setLeaderboardTypeFilter] = useState('all');
   const [selectedParticularEventId, setSelectedParticularEventId] = useState('');
   const [particularEventReport, setParticularEventReport] = useState(null);
   const [loadingParticularEvent, setLoadingParticularEvent] = useState(false);
@@ -381,9 +383,10 @@ function AppContent() {
     setLoadingSevas(true);
     try {
       const data = await apiRequest('/api/sevas');
-      setSevas(data);
+      setSevas(Array.isArray(data) ? data : []);
     } catch (err) {
       triggerNotification(err.message, 'error');
+      setSevas([]);
     } finally {
       setLoadingSevas(false);
     }
@@ -393,12 +396,14 @@ function AppContent() {
     setLoadingSevaTypes(true);
     try {
       const data = await apiRequest('/api/sevas/types');
-      setSevaTypes(data);
-      if (data.length > 0 && !sevaTab) {
-        setSevaTab(data[0]._id);
+      const list = Array.isArray(data) ? data : [];
+      setSevaTypes(list);
+      if (list.length > 0 && !sevaTab) {
+        setSevaTab(list[0]._id);
       }
     } catch (err) {
       triggerNotification(err.message, 'error');
+      setSevaTypes([]);
     } finally {
       setLoadingSevaTypes(false);
     }
@@ -552,9 +557,10 @@ function AppContent() {
     setLoadingSevaMembers(true);
     try {
       const data = await apiRequest('/api/sevas/members');
-      setSevaMembers(data);
+      setSevaMembers(Array.isArray(data) ? data : []);
     } catch (err) {
       triggerNotification(err.message, 'error');
+      setSevaMembers([]);
     } finally {
       setLoadingSevaMembers(false);
     }
@@ -869,9 +875,10 @@ function AppContent() {
     setLoadingMembers(true);
     try {
       const data = await apiRequest(`/api/members?search=${encodeURIComponent(memberSearch.trim())}&type=${memberTypeFilter}`);
-      setMembers(data);
+      setMembers(Array.isArray(data) ? data : []);
     } catch (err) {
       triggerNotification(err.message, 'error');
+      setMembers([]);
     } finally {
       setLoadingMembers(false);
     }
@@ -890,9 +897,10 @@ function AppContent() {
     setLoadingEvents(true);
     try {
       const data = await apiRequest('/api/events');
-      setEvents(data);
+      setEvents(Array.isArray(data) ? data : []);
     } catch (err) {
       triggerNotification(err.message, 'error');
+      setEvents([]);
     } finally {
       setLoadingEvents(false);
     }
@@ -1250,10 +1258,10 @@ function AppContent() {
   };
 
   // Fetch Leaderboard top attendees
-  const fetchTopAttendees = async () => {
+  const fetchTopAttendees = async (filterType = leaderboardTypeFilter) => {
     setLoadingTopAttendees(true);
     try {
-      const data = await apiRequest('/api/reports/top-attendees');
+      const data = await apiRequest(`/api/reports/top-attendees?type=${filterType}`);
       setTopAttendeesData(data);
     } catch (err) {
       triggerNotification(err.message, 'error');
@@ -1279,9 +1287,9 @@ function AppContent() {
   // Triggers for reports tab loading
   useEffect(() => {
     if (activeTab === 'reports' && reportsSubTab === 'leaderboard') {
-      fetchTopAttendees();
+      fetchTopAttendees(leaderboardTypeFilter);
     }
-  }, [activeTab, reportsSubTab]);
+  }, [activeTab, reportsSubTab, leaderboardTypeFilter]);
 
   useEffect(() => {
     if (activeTab === 'reports' && reportsSubTab === 'particular' && selectedParticularEventId) {
@@ -1293,9 +1301,10 @@ function AppContent() {
   const handlePrintLeaderboard = () => {
     if (!topAttendeesData) return;
     setPrintData({
-      title: "સભા શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦ સભ્યો)",
+      title: `રવિસભા શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦ સભ્યો)${leaderboardTypeFilter !== 'all' ? ` - પ્રકાર: ${CATEGORY_LABELS[leaderboardTypeFilter] || leaderboardTypeFilter}` : ''}`,
       type: "leaderboard",
-      data: topAttendeesData
+      data: topAttendeesData,
+      filterType: leaderboardTypeFilter
     });
     setTimeout(() => {
       window.print();
@@ -2609,134 +2618,211 @@ function AppContent() {
           {/* Sub Tab 2: Leaderboard */}
           {reportsSubTab === 'leaderboard' && (
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div className="panel-header">
+              <div className="panel-header" style={{ flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <h3 className="panel-title">સભા શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦)</h3>
-                  <p className="panel-subtitle">સભામાં શ્રેષ્ઠ હાજરી આપનાર સભ્યોનું પત્રક</p>
+                  <h3 className="panel-title">રવિસભા શ્રેષ્ઠ અહેવાલ (ટોપ ૧૦)</h3>
+                  <p className="panel-subtitle">રવિસભામાં સમયસર અને મોડા પહોંચનાર સભ્યોનું સરેરાશ સમય પત્રક</p>
                 </div>
-                <button
-                  className="btn-primary"
-                  onClick={handlePrintLeaderboard}
-                  disabled={loadingTopAttendees || !topAttendeesData}
-                >
-                  પ્રિન્ટ / PDF ડાઉનલોડ
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                      સભા સભ્ય પ્રકાર:
+                    </label>
+                    <select
+                      className="glass-input"
+                      style={{ padding: '6px 12px', minWidth: 140 }}
+                      value={leaderboardTypeFilter}
+                      onChange={(e) => setLeaderboardTypeFilter(e.target.value)}
+                    >
+                      {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    className="btn-primary"
+                    onClick={handlePrintLeaderboard}
+                    disabled={loadingTopAttendees || !topAttendeesData}
+                  >
+                    <Printer size={16} /> પ્રિન્ટ / PDF ડાઉનલોડ
+                  </button>
+                </div>
               </div>
 
               {loadingTopAttendees ? (
                 <SkeletonText rows={8} />
               ) : topAttendeesData ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                  <div className="grid-2">
-                    {/* Savar Katha Top 10 */}
-                    <div className="glass-card" style={{ overflowX: 'auto' }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-secondary)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
-                        સવારની કથા: હાજરીમાં શ્રેષ્ઠ ૧૦
-                      </h4>
-                      <table className="mini-table">
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ textAlign: 'left' }}>નામ</th>
-                            <th style={{ textAlign: 'left' }}>કોડ</th>
-                            <th style={{ textAlign: 'right' }}>હાજરી</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {topAttendeesData.topSavar.map((item, idx) => (
-                            <tr key={idx}>
-                              <td>{idx + 1}</td>
-                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 600 }}>{item.count} વખત</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {/* Table 1: Early / On-Time AVG Time Top 10 */}
+                  <div className="glass-card" style={{ overflowX: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
+                      <div>
+                        <h4 style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-primary)', margin: 0 }}>
+                          ૧. રવિસભા: સમયસર / વહેલા પહોંચનાર શ્રેષ્ઠ ૧૦ (વહેલા સરેરાશ સમય મુજબ)
+                        </h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', margin: 0, marginTop: 2 }}>
+                          રવિસભામાં સૌથી વહેલા સરેરાશ પહોંચવાનો સમય ધરાવતા સભ્યો
+                        </p>
+                      </div>
+                      <span className="badge badge-primary">
+                        {topAttendeesData.raviTopGroups ? `${topAttendeesData.raviTopGroups.length} રેન્ક` : '૦'}
+                      </span>
                     </div>
 
-                    {/* Ravi Sabha Top 10 */}
-                    <div className="glass-card" style={{ overflowX: 'auto' }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-primary)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
-                        રવિસભા: હાજરીમાં શ્રેષ્ઠ ૧૦
-                      </h4>
+                    {(!topAttendeesData.raviTopGroups || topAttendeesData.raviTopGroups.length === 0) ? (
+                      <p style={{ padding: '16px 8px', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+                        આ કેટેગરીમાં રવિસભામાં વહેલા/સમયસર પહોંચવાનો સમય નોંધાયેલ હોય તેવા કોઈ સભ્યો મળ્યા નથી.
+                      </p>
+                    ) : (
                       <table className="mini-table">
                         <thead>
                           <tr>
-                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ textAlign: 'left' }}>નામ</th>
-                            <th style={{ textAlign: 'left' }}>કોડ</th>
-                            <th style={{ textAlign: 'right' }}>હાજરી</th>
+                            <th style={{ textAlign: 'center', width: 90 }}>ક્રમ (સંખ્યા)</th>
+                            <th style={{ textAlign: 'left' }}>સભ્ય / સભ્યોનું નામ</th>
+                            <th style={{ textAlign: 'center', width: 140 }}>સરેરાશ સમય (AVG Time)</th>
+                            <th style={{ textAlign: 'right', width: 120 }}>સભા હાજરી</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {topAttendeesData.topRavi.map((item, idx) => (
-                            <tr key={idx}>
-                              <td>{idx + 1}</td>
-                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 600 }}>{item.count} વખત</td>
+                          {topAttendeesData.raviTopGroups.map((group) => (
+                            <tr key={group.rank}>
+                              <td style={{ textAlign: 'center' }}>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    fontWeight: 700,
+                                    fontSize: '0.88rem',
+                                    padding: '4px 10px',
+                                    background: group.rank <= 3 ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.05)',
+                                    color: group.rank <= 3 ? 'var(--color-primary)' : 'inherit',
+                                    border: group.rank <= 3 ? '1px solid var(--color-primary)' : '1px solid var(--glass-border)'
+                                  }}
+                                >
+                                  {group.rankLabel}
+                                </span>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {group.members.map((m) => (
+                                    <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                      <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{m.name}</span>
+                                      {m.nameEn && (
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                          ({m.nameEn})
+                                        </span>
+                                      )}
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
+                                        [{m.uniqueCode}]
+                                      </span>
+                                      <span className="badge badge-secondary" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
+                                        {CATEGORY_TAGS[m.type] || m.type}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span
+                                  className="badge badge-success"
+                                  style={{ fontWeight: 700, fontSize: '0.9rem', padding: '4px 10px' }}
+                                >
+                                  {group.avgTime}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                                {group.members.map(m => m.count).join(', ')} સભા
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    )}
                   </div>
 
-                  <div className="grid-2">
-                    {/* Ravi Sabha Punctual (First Arrivals) */}
-                    <div className="glass-card" style={{ overflowX: 'auto' }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-success)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
-                        રવિસભા: સમયસર પહોંચનાર (પ્રાથમિકતા)
-                      </h4>
-                      <table className="mini-table">
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ textAlign: 'left' }}>નામ</th>
-                            <th style={{ textAlign: 'left' }}>કોડ</th>
-                            <th style={{ textAlign: 'right' }}>સમયસર હાજરી</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {topAttendeesData.earlyRavi.map((item, idx) => (
-                            <tr key={idx}>
-                              <td>{idx + 1}</td>
-                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ textAlign: 'right', color: 'var(--color-success)', fontWeight: 600 }}>{item.count} વખત</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {/* Table 2: Late AVG Time Top 10 */}
+                  <div className="glass-card" style={{ overflowX: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
+                      <div>
+                        <h4 style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-warning)', margin: 0 }}>
+                          ૨. રવિસભા: મોડા પડનાર ૧૦ સભ્યો (મોડા સરેરાશ સમય મુજબ)
+                        </h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', margin: 0, marginTop: 2 }}>
+                          રવિસભામાં સૌથી મોડા સરેરાશ પહોંચવાનો સમય ધરાવતા સભ્યો
+                        </p>
+                      </div>
+                      <span className="badge badge-warning">
+                        {topAttendeesData.raviLateGroups ? `${topAttendeesData.raviLateGroups.length} રેન્ક` : '૦'}
+                      </span>
                     </div>
 
-                    {/* Ravi Sabha Late Arrivals */}
-                    <div className="glass-card" style={{ overflowX: 'auto' }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 12, color: 'var(--color-warning)', borderBottom: '1px solid var(--glass-border)', paddingBottom: 8 }}>
-                        રવિસભા: મોડા પડનાર ૧૦ સભ્યો
-                      </h4>
+                    {(!topAttendeesData.raviLateGroups || topAttendeesData.raviLateGroups.length === 0) ? (
+                      <p style={{ padding: '16px 8px', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+                        આ કેટેગરીમાં રવિસભામાં મોડા પડ્યા હોય તેવા કોઈ સભ્યો મળ્યા નથી.
+                      </p>
+                    ) : (
                       <table className="mini-table">
                         <thead>
                           <tr>
-                            <th style={{ textAlign: 'left' }}>ક્રમ</th>
-                            <th style={{ textAlign: 'left' }}>નામ</th>
-                            <th style={{ textAlign: 'left' }}>કોડ</th>
-                            <th style={{ textAlign: 'right' }}>મોડા આવ્યા</th>
+                            <th style={{ textAlign: 'center', width: 90 }}>ક્રમ (સંખ્યા)</th>
+                            <th style={{ textAlign: 'left' }}>સભ્ય / સભ્યોનું નામ</th>
+                            <th style={{ textAlign: 'center', width: 140 }}>સરેરાશ સમય (AVG Time)</th>
+                            <th style={{ textAlign: 'right', width: 120 }}>મોડા પડ્યા</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {topAttendeesData.lateRavi.map((item, idx) => (
-                            <tr key={idx}>
-                              <td>{idx + 1}</td>
-                              <td style={{ fontWeight: 600 }}>{item.member.name}</td>
-                              <td style={{ fontFamily: 'monospace' }}>{item.member.uniqueCode}</td>
-                              <td style={{ textAlign: 'right', color: 'var(--color-danger)', fontWeight: 600 }}>{item.count} વખત</td>
+                          {topAttendeesData.raviLateGroups.map((group) => (
+                            <tr key={group.rank}>
+                              <td style={{ textAlign: 'center' }}>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    fontWeight: 700,
+                                    fontSize: '0.88rem',
+                                    padding: '4px 10px',
+                                    background: 'rgba(239, 68, 68, 0.1)',
+                                    color: 'var(--color-danger)',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)'
+                                  }}
+                                >
+                                  {group.rankLabel}
+                                </span>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {group.members.map((m) => (
+                                    <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                      <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{m.name}</span>
+                                      {m.nameEn && (
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                          ({m.nameEn})
+                                        </span>
+                                      )}
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
+                                        [{m.uniqueCode}]
+                                      </span>
+                                      <span className="badge badge-secondary" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
+                                        {CATEGORY_TAGS[m.type] || m.type}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span
+                                  className="badge badge-danger"
+                                  style={{ fontWeight: 700, fontSize: '0.9rem', padding: '4px 10px' }}
+                                >
+                                  {group.avgTime}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-danger)' }}>
+                                {group.members.map(m => m.count).join(', ')} વખત
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -4805,107 +4891,121 @@ function AppContent() {
         </div>
 
         {printData && printData.type === 'leaderboard' && printData.data && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            <div>
-              <h3 style={{ borderBottom: '1px solid #000', paddingBottom: 4, fontWeight: 700 }}>સવારની કથા: હાજરીમાં શ્રેષ્ઠ ૧૦ સભ્યો</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* --- PAGE 1: EARLY / ON-TIME TOP 10 --- */}
+            <div style={{ minHeight: '90vh' }}>
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, borderBottom: '2px solid #000', paddingBottom: 6, margin: 0 }}>
+                  ૧. રવિસભા: સમયસર / વહેલા પહોંચનાર શ્રેષ્ઠ ૧૦ (વહેલા સરેરાશ સમય મુજબ)
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#444', margin: '4px 0 0 0' }}>
+                  સભામાં સૌથી વહેલા સરેરાશ પહોંચવાનો સમય ધરાવતા સભ્યોનું પત્રક
+                </p>
+              </div>
+
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: '0.9rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: 6 }}>ક્રમ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>નામ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>કોડ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>પ્રકાર</th>
-                    <th style={{ textAlign: 'right', padding: 6 }}>કુલ હાજરી</th>
+                  <tr style={{ borderBottom: '2px solid #000', background: '#f3f4f6' }}>
+                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '80px', border: '1px solid #000' }}>ક્રમ (સંખ્યા)</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', width: 'auto', border: '1px solid #000' }}>સભ્ય / સભ્યોનું નામ</th>
+                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '150px', border: '1px solid #000' }}>સરેરાશ સમય (AVG Time)</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', width: '110px', border: '1px solid #000' }}>સભા હાજરી</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {printData.data.topSavar.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: 6 }}>{idx + 1}</td>
-                      <td style={{ padding: 6, fontWeight: 600 }}>{item.member.name}</td>
-                      <td style={{ padding: 6 }}>{item.member.uniqueCode}</td>
-                      <td style={{ padding: 6 }}>{CATEGORY_TAGS[item.member.type]}</td>
-                      <td style={{ padding: 6, textAlign: 'right', fontWeight: 600 }}>{item.count} વખત</td>
+                  {(!printData.data.raviTopGroups || printData.data.raviTopGroups.length === 0) ? (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: 16, border: '1px solid #000' }}>
+                        કોઈ રેકોર્ડ મળ્યો નથી.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    printData.data.raviTopGroups.map((group) => (
+                      <tr key={group.rank} style={{ borderBottom: '1px solid #000' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
+                          {group.rankLabel}
+                        </td>
+                        <td style={{ padding: '8px 10px', border: '1px solid #000' }}>
+                          {group.members.map((m, mIdx) => (
+                            <div key={m._id || mIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: mIdx < group.members.length - 1 ? 4 : 0 }}>
+                              <span style={{ fontWeight: 600 }}>{m.name}</span>
+                              <span style={{ fontSize: '0.8rem', color: '#444' }}>[{m.uniqueCode}]</span>
+                              <span style={{ fontSize: '0.75rem', color: '#555' }}>({CATEGORY_TAGS[m.type] || m.type})</span>
+                            </div>
+                          ))}
+                        </td>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
+                          {group.avgTime}
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, border: '1px solid #000' }}>
+                          {group.members.map(m => m.count).join(', ')} સભા
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
 
-            <div>
-              <h3 style={{ borderBottom: '1px solid #000', paddingBottom: 4, fontWeight: 700 }}>રવિસભા: હાજરીમાં શ્રેષ્ઠ ૧૦ સભ્યો</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: 6 }}>ક્રમ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>નામ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>કોડ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>પ્રકાર</th>
-                    <th style={{ textAlign: 'right', padding: 6 }}>કુલ હાજરી</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {printData.data.topRavi.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: 6 }}>{idx + 1}</td>
-                      <td style={{ padding: 6, fontWeight: 600 }}>{item.member.name}</td>
-                      <td style={{ padding: 6 }}>{item.member.uniqueCode}</td>
-                      <td style={{ padding: 6 }}>{CATEGORY_TAGS[item.member.type]}</td>
-                      <td style={{ padding: 6, textAlign: 'right', fontWeight: 600 }}>{item.count} વખત</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* --- PAGE 2: LATE TOP 10 (FORCED SECOND PAGE) --- */}
+            <div style={{ pageBreakBefore: 'always', breakBefore: 'page', paddingTop: 24 }}>
+              <div style={{ textAlign: 'center', marginBottom: 20, borderBottom: '2px solid #000', paddingBottom: 10 }}>
+                <h1 style={{ fontSize: '1.7rem', fontWeight: 800, margin: 0 }}>જય સ્વામિનારાયણ</h1>
+                <h2 style={{ fontSize: '1.1rem', marginTop: 4 }}>જ્ઞાન સત્સંગ મંડળ પાદરા</h2>
+                <p style={{ fontSize: '0.95rem', fontWeight: 600, marginTop: 4 }}>
+                  {printData.title} - પાનું ૨
+                </p>
+              </div>
 
-            <div>
-              <h3 style={{ borderBottom: '1px solid #000', paddingBottom: 4, fontWeight: 700 }}>રવિસભા: સમયસર પહોંચનાર (પ્રાથમિકતા)</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: 6 }}>ક્રમ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>નામ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>કોડ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>પ્રકાર</th>
-                    <th style={{ textAlign: 'right', padding: 6 }}>સમયસર હાજરી</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {printData.data.earlyRavi.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: 6 }}>{idx + 1}</td>
-                      <td style={{ padding: 6, fontWeight: 600 }}>{item.member.name}</td>
-                      <td style={{ padding: 6 }}>{item.member.uniqueCode}</td>
-                      <td style={{ padding: 6 }}>{CATEGORY_TAGS[item.member.type]}</td>
-                      <td style={{ padding: 6, textAlign: 'right', fontWeight: 600 }}>{item.count} વખત</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, borderBottom: '2px solid #000', paddingBottom: 6, margin: 0, color: '#000' }}>
+                  ૨. રવિસભા: મોડા પડનાર ૧૦ સભ્યો (મોડા સરેરાશ સમય મુજબ)
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#444', margin: '4px 0 0 0' }}>
+                  સભામાં સૌથી મોડા સરેરાશ પહોંચવાનો સમય ધરાવતા સભ્યોનું પત્રક
+                </p>
+              </div>
 
-            <div>
-              <h3 style={{ borderBottom: '1px solid #000', paddingBottom: 4, fontWeight: 700 }}>રવિસભા: મોડા પડનાર ૧૦ સભ્યો</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: '0.9rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: 6 }}>ક્રમ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>નામ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>કોડ</th>
-                    <th style={{ textAlign: 'left', padding: 6 }}>પ્રકાર</th>
-                    <th style={{ textAlign: 'right', padding: 6 }}>મોડા આવ્યા</th>
+                  <tr style={{ borderBottom: '2px solid #000', background: '#f3f4f6' }}>
+                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '80px', border: '1px solid #000' }}>ક્રમ (સંખ્યા)</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', width: 'auto', border: '1px solid #000' }}>સભ્ય / સભ્યોનું નામ</th>
+                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '150px', border: '1px solid #000' }}>સરેરાશ સમય (AVG Time)</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', width: '110px', border: '1px solid #000' }}>મોડા પડ્યા</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {printData.data.lateRavi.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: 6 }}>{idx + 1}</td>
-                      <td style={{ padding: 6, fontWeight: 600 }}>{item.member.name}</td>
-                      <td style={{ padding: 6 }}>{item.member.uniqueCode}</td>
-                      <td style={{ padding: 6 }}>{CATEGORY_TAGS[item.member.type]}</td>
-                      <td style={{ padding: 6, textAlign: 'right', fontWeight: 600 }}>{item.count} વખત</td>
+                  {(!printData.data.raviLateGroups || printData.data.raviLateGroups.length === 0) ? (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: 16, border: '1px solid #000' }}>
+                        કોઈ મોડા પડનાર સભ્ય મળ્યા નથી.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    printData.data.raviLateGroups.map((group) => (
+                      <tr key={group.rank} style={{ borderBottom: '1px solid #000' }}>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
+                          {group.rankLabel}
+                        </td>
+                        <td style={{ padding: '8px 10px', border: '1px solid #000' }}>
+                          {group.members.map((m, mIdx) => (
+                            <div key={m._id || mIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: mIdx < group.members.length - 1 ? 4 : 0 }}>
+                              <span style={{ fontWeight: 600 }}>{m.name}</span>
+                              <span style={{ fontSize: '0.8rem', color: '#444' }}>[{m.uniqueCode}]</span>
+                              <span style={{ fontSize: '0.75rem', color: '#555' }}>({CATEGORY_TAGS[m.type] || m.type})</span>
+                            </div>
+                          ))}
+                        </td>
+                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
+                          {group.avgTime}
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, border: '1px solid #000' }}>
+                          {group.members.map(m => m.count).join(', ')} વખત
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
