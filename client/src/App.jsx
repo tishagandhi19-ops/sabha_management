@@ -2711,9 +2711,6 @@ function AppContent() {
                                           ({m.nameEn})
                                         </span>
                                       )}
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-                                        [{m.uniqueCode}]
-                                      </span>
                                       <span className="badge badge-secondary" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
                                         {CATEGORY_TAGS[m.type] || m.type}
                                       </span>
@@ -2797,9 +2794,6 @@ function AppContent() {
                                           ({m.nameEn})
                                         </span>
                                       )}
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-                                        [{m.uniqueCode}]
-                                      </span>
                                       <span className="badge badge-secondary" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
                                         {CATEGORY_TAGS[m.type] || m.type}
                                       </span>
@@ -4884,130 +4878,146 @@ function AppContent() {
 
       {/* --- PRINT CONTAINER --- */}
       <div className="print-container">
-        <div style={{ textAlign: 'center', marginBottom: 24, borderBottom: '2px solid #000', paddingBottom: 12 }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>જય સ્વામિનારાયણ</h1>
-          <h2 style={{ fontSize: '1.2rem', marginTop: 6 }}>જ્ઞાન સત્સંગ મંડળ પાદરા</h2>
-          {printData && <p style={{ fontSize: '1rem', fontWeight: 600, marginTop: 4 }}>{printData.title}</p>}
-        </div>
+        {printData && printData.type !== 'leaderboard' && (
+          <div style={{ textAlign: 'center', marginBottom: 24, borderBottom: '2px solid #000', paddingBottom: 12 }}>
+            <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>જય સ્વામિનારાયણ</h1>
+            <h2 style={{ fontSize: '1.2rem', marginTop: 6 }}>જ્ઞાન સત્સંગ મંડળ પાદરા</h2>
+            <p style={{ fontSize: '1rem', fontWeight: 600, marginTop: 4 }}>{printData.title}</p>
+          </div>
+        )}
 
         {printData && printData.type === 'leaderboard' && printData.data && (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {/* --- PAGE 1: EARLY / ON-TIME TOP 10 --- */}
-            <div style={{ minHeight: '90vh' }}>
-              <div style={{ marginBottom: 16 }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, borderBottom: '2px solid #000', paddingBottom: 6, margin: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'center' }}>
+            {/* --- PAGE 1: EARLY / ON-TIME TOP 10 (ASCENDING) --- */}
+            <div style={{ minHeight: '92vh', pageBreakAfter: 'always', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img
+                src="/ravisabha_header.png"
+                alt="રવિસભા હેડર"
+                className="report-header-img"
+              />
+              
+              <div style={{ textAlign: 'center', width: '100%', margin: '6px 0 16px 0' }}>
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', color: '#000', textAlign: 'center' }}>
                   ૧. રવિસભા: સમયસર / વહેલા પહોંચનાર શ્રેષ્ઠ ૧૦ (વહેલા સરેરાશ સમય મુજબ)
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: '#444', margin: '4px 0 0 0' }}>
-                  સભામાં સૌથી વહેલા સરેરાશ પહોંચવાનો સમય ધરાવતા સભ્યોનું પત્રક
-                </p>
+                </h2>
+                <div style={{ display: 'inline-block', borderBottom: '2px solid #000', paddingBottom: 4, minWidth: '200px' }}>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#000' }}>
+                    {printData.filterType && printData.filterType !== 'all' ? `સભ્ય પ્રકાર: ${CATEGORY_LABELS[printData.filterType] || printData.filterType}` : 'સભા સભ્ય પ્રકાર: બધા સભ્યો'}
+                  </span>
+                </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #000', background: '#f3f4f6' }}>
-                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '80px', border: '1px solid #000' }}>ક્રમ (સંખ્યા)</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', width: 'auto', border: '1px solid #000' }}>સભ્ય / સભ્યોનું નામ</th>
-                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '150px', border: '1px solid #000' }}>સરેરાશ સમય (AVG Time)</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', width: '110px', border: '1px solid #000' }}>સભા હાજરી</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(!printData.data.raviTopGroups || printData.data.raviTopGroups.length === 0) ? (
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <table className="report-print-table" style={{ margin: '0 auto', width: '100%' }}>
+                  <thead>
                     <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', padding: 16, border: '1px solid #000' }}>
-                        કોઈ રેકોર્ડ મળ્યો નથી.
-                      </td>
+                      <th style={{ textAlign: 'center', width: '85px' }}>ક્રમ (સંખ્યા)</th>
+                      <th style={{ textAlign: 'left', width: 'auto' }}>સભ્ય / સભ્યોનું નામ</th>
+                      <th style={{ textAlign: 'center', width: '170px' }}>સરેરાશ સમય (AVG Time)</th>
+                      <th style={{ textAlign: 'right', width: '120px' }}>સભા હાજરી</th>
                     </tr>
-                  ) : (
-                    printData.data.raviTopGroups.map((group) => (
-                      <tr key={group.rank} style={{ borderBottom: '1px solid #000' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
-                          {group.rankLabel}
-                        </td>
-                        <td style={{ padding: '8px 10px', border: '1px solid #000' }}>
-                          {group.members.map((m, mIdx) => (
-                            <div key={m._id || mIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: mIdx < group.members.length - 1 ? 4 : 0 }}>
-                              <span style={{ fontWeight: 600 }}>{m.name}</span>
-                              <span style={{ fontSize: '0.8rem', color: '#444' }}>[{m.uniqueCode}]</span>
-                              <span style={{ fontSize: '0.75rem', color: '#555' }}>({CATEGORY_TAGS[m.type] || m.type})</span>
-                            </div>
-                          ))}
-                        </td>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
-                          {group.avgTime}
-                        </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, border: '1px solid #000' }}>
-                          {group.members.map(m => m.count).join(', ')} સભા
+                  </thead>
+                  <tbody>
+                    {(!printData.data.raviTopGroups || printData.data.raviTopGroups.length === 0) ? (
+                      <tr>
+                        <td colSpan="4" style={{ textAlign: 'center', padding: 24 }}>
+                          આ કેટેગરીમાં રવિસભામાં વહેલા/સમયસર પહોંચવાનો સમય નોંધાયેલ હોય તેવા કોઈ સભ્યો મળ્યા નથી.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      printData.data.raviTopGroups.map((group) => (
+                        <tr key={group.rank}>
+                          <td style={{ textAlign: 'center', fontWeight: 800 }}>
+                            {group.rankLabel}
+                          </td>
+                          <td>
+                            <div key={group.rank} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {group.members.map((m, mIdx) => (
+                                <div key={m._id || mIdx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontWeight: 700 }}>{m.name}</span>
+                                  <span style={{ fontSize: '0.78rem', color: '#444' }}>({CATEGORY_TAGS[m.type] || m.type})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 800 }}>
+                            {group.avgTime}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                            {group.members.map(m => m.count).join(', ')} સભા
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* --- PAGE 2: LATE TOP 10 (FORCED SECOND PAGE) --- */}
-            <div style={{ pageBreakBefore: 'always', breakBefore: 'page', paddingTop: 24 }}>
-              <div style={{ textAlign: 'center', marginBottom: 20, borderBottom: '2px solid #000', paddingBottom: 10 }}>
-                <h1 style={{ fontSize: '1.7rem', fontWeight: 800, margin: 0 }}>જય સ્વામિનારાયણ</h1>
-                <h2 style={{ fontSize: '1.1rem', marginTop: 4 }}>જ્ઞાન સત્સંગ મંડળ પાદરા</h2>
-                <p style={{ fontSize: '0.95rem', fontWeight: 600, marginTop: 4 }}>
-                  {printData.title} - પાનું ૨
-                </p>
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, borderBottom: '2px solid #000', paddingBottom: 6, margin: 0, color: '#000' }}>
+            <div style={{ pageBreakBefore: 'always', breakBefore: 'page', paddingTop: 10, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img
+                src="/ravisabha_header.png"
+                alt="રવિસભા હેડર"
+                className="report-header-img"
+              />
+              
+              <div style={{ textAlign: 'center', width: '100%', margin: '6px 0 16px 0' }}>
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', color: '#000', textAlign: 'center' }}>
                   ૨. રવિસભા: મોડા પડનાર ૧૦ સભ્યો (મોડા સરેરાશ સમય મુજબ)
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: '#444', margin: '4px 0 0 0' }}>
-                  સભામાં સૌથી મોડા સરેરાશ પહોંચવાનો સમય ધરાવતા સભ્યોનું પત્રક
-                </p>
+                </h2>
+                <div style={{ display: 'inline-block', borderBottom: '2px solid #000', paddingBottom: 4, minWidth: '200px' }}>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#000' }}>
+                    {printData.filterType && printData.filterType !== 'all' ? `સભ્ય પ્રકાર: ${CATEGORY_LABELS[printData.filterType] || printData.filterType}` : 'સભા સભ્ય પ્રકાર: બધા સભ્યો'}
+                  </span>
+                </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #000', background: '#f3f4f6' }}>
-                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '80px', border: '1px solid #000' }}>ક્રમ (સંખ્યા)</th>
-                    <th style={{ textAlign: 'left', padding: '8px 10px', width: 'auto', border: '1px solid #000' }}>સભ્ય / સભ્યોનું નામ</th>
-                    <th style={{ textAlign: 'center', padding: '8px 6px', width: '150px', border: '1px solid #000' }}>સરેરાશ સમય (AVG Time)</th>
-                    <th style={{ textAlign: 'right', padding: '8px 10px', width: '110px', border: '1px solid #000' }}>મોડા પડ્યા</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(!printData.data.raviLateGroups || printData.data.raviLateGroups.length === 0) ? (
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <table className="report-print-table" style={{ margin: '0 auto', width: '100%' }}>
+                  <thead>
                     <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', padding: 16, border: '1px solid #000' }}>
-                        કોઈ મોડા પડનાર સભ્ય મળ્યા નથી.
-                      </td>
+                      <th style={{ textAlign: 'center', width: '85px' }}>ક્રમ (સંખ્યા)</th>
+                      <th style={{ textAlign: 'left', width: 'auto' }}>સભ્ય / સભ્યોનું નામ</th>
+                      <th style={{ textAlign: 'center', width: '170px' }}>સરેરાશ સમય (AVG Time)</th>
+                      <th style={{ textAlign: 'right', width: '120px' }}>મોડા પડ્યા</th>
                     </tr>
-                  ) : (
-                    printData.data.raviLateGroups.map((group) => (
-                      <tr key={group.rank} style={{ borderBottom: '1px solid #000' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
-                          {group.rankLabel}
-                        </td>
-                        <td style={{ padding: '8px 10px', border: '1px solid #000' }}>
-                          {group.members.map((m, mIdx) => (
-                            <div key={m._id || mIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: mIdx < group.members.length - 1 ? 4 : 0 }}>
-                              <span style={{ fontWeight: 600 }}>{m.name}</span>
-                              <span style={{ fontSize: '0.8rem', color: '#444' }}>[{m.uniqueCode}]</span>
-                              <span style={{ fontSize: '0.75rem', color: '#555' }}>({CATEGORY_TAGS[m.type] || m.type})</span>
-                            </div>
-                          ))}
-                        </td>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, border: '1px solid #000' }}>
-                          {group.avgTime}
-                        </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, border: '1px solid #000' }}>
-                          {group.members.map(m => m.count).join(', ')} વખત
+                  </thead>
+                  <tbody>
+                    {(!printData.data.raviLateGroups || printData.data.raviLateGroups.length === 0) ? (
+                      <tr>
+                        <td colSpan="4" style={{ textAlign: 'center', padding: 24 }}>
+                          આ કેટેગરીમાં રવિસભામાં મોડા પડ્યા હોય તેવા કોઈ સભ્યો મળ્યા નથી.
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      printData.data.raviLateGroups.map((group) => (
+                        <tr key={group.rank}>
+                          <td style={{ textAlign: 'center', fontWeight: 800 }}>
+                            {group.rankLabel}
+                          </td>
+                          <td>
+                            <div key={group.rank} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {group.members.map((m, mIdx) => (
+                                <div key={m._id || mIdx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontWeight: 700 }}>{m.name}</span>
+                                  <span style={{ fontSize: '0.78rem', color: '#444' }}>({CATEGORY_TAGS[m.type] || m.type})</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 800 }}>
+                            {group.avgTime}
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                            {group.members.map(m => m.count).join(', ')} વખત
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
