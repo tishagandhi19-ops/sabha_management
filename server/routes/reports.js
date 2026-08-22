@@ -175,6 +175,20 @@ router.get('/top-attendees', auth, async (req, res) => {
       return `${String(h12).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${ampm}`;
     };
 
+    const getISTMinutes = (dateInput) => {
+      const d = new Date(dateInput);
+      const formatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.format(d).split(':');
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      return h * 60 + m;
+    };
+
     // Helper function to calculate average arrival time and group ties
     const computeTopAvgGroups = async (matchCondition, sortAscending = true) => {
       const records = await Attendance.find({
@@ -191,8 +205,7 @@ router.get('/top-attendees', auth, async (req, res) => {
         if (type && type !== 'all' && record.member.type !== type) continue;
 
         const memberId = record.member._id.toString();
-        const arrDate = new Date(record.arrivalTime);
-        const minutes = arrDate.getHours() * 60 + arrDate.getMinutes();
+        const minutes = getISTMinutes(record.arrivalTime);
 
         if (!memberTimeMap.has(memberId)) {
           memberTimeMap.set(memberId, {

@@ -12,6 +12,7 @@ import attendanceRoutes from './routes/attendance.js';
 import reportsRoutes from './routes/reports.js';
 import sevaRoutes from './routes/sevas.js';
 
+process.env.TZ = 'Asia/Kolkata';
 dotenv.config();
 
 const app = express();
