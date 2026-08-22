@@ -2,6 +2,7 @@ import express from 'express';
 import Member from '../models/Member.js';
 import Attendance from '../models/Attendance.js';
 import auth from '../middleware/auth.js';
+import { transliterateGujaratiToEnglish } from '../utils/transliterate.js';
 
 const router = express.Router();
 
@@ -13,10 +14,13 @@ router.get('/', auth, async (req, res) => {
     const { search, type } = req.query;
     let query = {};
 
-    if (search) {
+    const cleanSearch = search ? search.trim() : '';
+    if (cleanSearch) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { uniqueCode: { $regex: search, $options: 'i' } }
+        { name: { $regex: cleanSearch, $options: 'i' } },
+        { nameEn: { $regex: cleanSearch, $options: 'i' } },
+        { uniqueCode: { $regex: cleanSearch, $options: 'i' } },
+        { mobileNumber: { $regex: cleanSearch, $options: 'i' } }
       ];
     }
 
@@ -36,7 +40,7 @@ router.get('/', auth, async (req, res) => {
 // @desc    Create a new member
 // @access  Private (Admin)
 router.post('/', auth, async (req, res) => {
-  const { name, type, uniqueCode, mobileNumber } = req.body;
+  const { name, nameEn, type, uniqueCode, mobileNumber } = req.body;
 
   if (!name || !type) {
     return res.status(400).json({ msg: 'કૃપા કરીને બધી માહિતી ભરો' });
@@ -52,8 +56,13 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ msg: 'આ યુનિક કોડ વાળો સભ્ય પહેલેથી જ અસ્તિત્વમાં છે' });
     }
 
+    const finalNameEn = nameEn && nameEn.trim()
+      ? nameEn.trim()
+      : transliterateGujaratiToEnglish(name);
+
     const newMember = new Member({
       name: name.trim(),
+      nameEn: finalNameEn,
       type,
       uniqueCode: finalUniqueCode,
       mobileNumber: mobileNumber ? mobileNumber.trim() : undefined
@@ -71,7 +80,7 @@ router.post('/', auth, async (req, res) => {
 // @desc    Bulk create members
 // @access  Private (Admin)
 router.post('/bulk', auth, async (req, res) => {
-  const { members } = req.body; // Array of { name, type, uniqueCode, mobileNumber }
+  const { members } = req.body; // Array of { name, nameEn, type, uniqueCode, mobileNumber }
 
   if (!members || !Array.isArray(members) || members.length === 0) {
     return res.status(400).json({ msg: 'અમાન્ય સભ્યોની લિસ્ટ' });
@@ -82,7 +91,7 @@ router.post('/bulk', auth, async (req, res) => {
     const errors = [];
 
     for (let index = 0; index < members.length; index++) {
-      const { name, type, uniqueCode, mobileNumber } = members[index];
+      const { name, nameEn, type, uniqueCode, mobileNumber } = members[index];
       if (!name || !type) {
         errors.push({ line: index + 1, msg: 'અપૂર્ણ માહિતી (નામ અથવા પ્રકાર ગુમ છે)' });
         continue;
@@ -104,8 +113,13 @@ router.post('/bulk', auth, async (req, res) => {
         continue;
       }
 
+      const finalNameEn = nameEn && nameEn.toString().trim()
+        ? nameEn.toString().trim()
+        : transliterateGujaratiToEnglish(name);
+
       const newMember = new Member({
         name: name.trim(),
+        nameEn: finalNameEn,
         type: type.toLowerCase(),
         uniqueCode: cleanCode,
         mobileNumber: mobileNumber ? mobileNumber.toString().trim() : undefined
@@ -131,10 +145,18 @@ router.post('/bulk', auth, async (req, res) => {
 // @desc    Update a member
 // @access  Private (Admin)
 router.put('/:id', auth, async (req, res) => {
-  const { name, type, uniqueCode, mobileNumber } = req.body;
+  const { name, nameEn, type, uniqueCode, mobileNumber } = req.body;
   
   const updateFields = {};
-  if (name) updateFields.name = name.trim();
+  if (name) {
+    updateFields.name = name.trim();
+    updateFields.nameEn = nameEn && nameEn.trim()
+      ? nameEn.trim()
+      : transliterateGujaratiToEnglish(name);
+  } else if (nameEn !== undefined) {
+    updateFields.nameEn = nameEn ? nameEn.trim() : '';
+  }
+
   if (type) updateFields.type = type;
   if (uniqueCode) updateFields.uniqueCode = uniqueCode.trim();
   if (mobileNumber !== undefined) updateFields.mobileNumber = mobileNumber ? mobileNumber.trim() : '';

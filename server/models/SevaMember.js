@@ -6,6 +6,11 @@ const SevaMemberSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  nameEn: {
+    type: String,
+    trim: true,
+    index: true
+  },
   type: {
     type: String,
     enum: ['bal', 'kisori', 'yuvti', 'prutha', 'vadil'],

@@ -34,6 +34,7 @@ import {
   ShimmerOverlay
 } from './components/Loaders';
 import InstallPWA from './components/InstallPWA';
+import { transliterateGujaratiToEnglish } from './utils/transliterate';
 
 // Localization mapping for categories
 const CATEGORY_LABELS = {
@@ -123,6 +124,7 @@ const parseExcelMembers = (file, isSeva) => {
           if (!isSeva && !isMale) return null;
 
           const nameVal = findValue([/fullnameguj/i, /name/i]);
+          const nameEnVal = findValue([/fullnameeng/i, /englishname/i, /nameen/i, /engname/i]);
           const ageVal = findValue([/age/i]);
           const mobileVal = findValue([/mobile\s*no\s*1/i, /mobile/i, /phone/i]);
           const smkVal = findValue([/smk/i, /uniquecode/i, /code/i]);
@@ -143,8 +145,14 @@ const parseExcelMembers = (file, isSeva) => {
             }
           }
 
+          const cleanName = nameVal ? nameVal.toString().trim() : '';
+          const cleanNameEn = nameEnVal && nameEnVal.toString().trim()
+            ? nameEnVal.toString().trim()
+            : transliterateGujaratiToEnglish(cleanName);
+
           return {
-            name: nameVal ? nameVal.toString().trim() : '',
+            name: cleanName,
+            nameEn: cleanNameEn,
             type: type,
             uniqueCode: smkVal ? smkVal.toString().trim() : '',
             mobileNumber: mobileVal ? mobileVal.toString().trim() : ''
@@ -295,6 +303,7 @@ function AppContent() {
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [memberName, setMemberName] = useState('');
+  const [memberEnName, setMemberEnName] = useState('');
   const [memberType, setMemberType] = useState('yuva');
   const [memberCode, setMemberCode] = useState('');
   const [memberMobileNumber, setMemberMobileNumber] = useState('');
@@ -318,6 +327,7 @@ function AppContent() {
   const [showSevaMemberModal, setShowSevaMemberModal] = useState(false);
   const [editingSevaMember, setEditingSevaMember] = useState(null);
   const [sevaMemberName, setSevaMemberName] = useState('');
+  const [sevaMemberEnName, setSevaMemberEnName] = useState('');
   const [sevaMemberType, setSevaMemberType] = useState('yuvti');
   const [sevaMemberUniqueCode, setSevaMemberUniqueCode] = useState('');
   const [sevaMemberMobileNumber, setSevaMemberMobileNumber] = useState('');
@@ -560,8 +570,10 @@ function AppContent() {
 
     setSubmittingSevaMember(true);
     try {
+      const finalNameEn = sevaMemberEnName.trim() || transliterateGujaratiToEnglish(sevaMemberName.trim());
       const payload = {
         name: sevaMemberName.trim(),
+        nameEn: finalNameEn,
         type: sevaMemberType,
         uniqueCode: sevaMemberUniqueCode.trim(),
         mobileNumber: sevaMemberMobileNumber
@@ -583,6 +595,7 @@ function AppContent() {
 
       setShowSevaMemberModal(false);
       setSevaMemberName('');
+      setSevaMemberEnName('');
       setSevaMemberUniqueCode('');
       setSevaMemberMobileNumber('');
       setEditingSevaMember(null);
@@ -855,7 +868,7 @@ function AppContent() {
   const fetchMembers = async () => {
     setLoadingMembers(true);
     try {
-      const data = await apiRequest(`/api/members?search=${memberSearch}&type=${memberTypeFilter}`);
+      const data = await apiRequest(`/api/members?search=${encodeURIComponent(memberSearch.trim())}&type=${memberTypeFilter}`);
       setMembers(data);
     } catch (err) {
       triggerNotification(err.message, 'error');
@@ -1174,8 +1187,10 @@ function AppContent() {
     e.preventDefault();
     setSubmittingMember(true);
     try {
+      const finalNameEn = memberEnName.trim() || transliterateGujaratiToEnglish(memberName.trim());
       const body = {
-        name: memberName,
+        name: memberName.trim(),
+        nameEn: finalNameEn,
         type: memberType,
         uniqueCode: memberCode,
         mobileNumber: memberMobileNumber
@@ -1198,6 +1213,7 @@ function AppContent() {
       setShowMemberModal(false);
       setEditingMember(null);
       setMemberName('');
+      setMemberEnName('');
       setMemberCode('');
       setMemberMobileNumber('');
       fetchMembers();
@@ -1213,6 +1229,7 @@ function AppContent() {
   const triggerEditMember = (member) => {
     setEditingMember(member);
     setMemberName(member.name);
+    setMemberEnName(member.nameEn || transliterateGujaratiToEnglish(member.name));
     setMemberType(member.type);
     setMemberCode(member.uniqueCode);
     setMemberMobileNumber(member.mobileNumber || '');
@@ -1748,7 +1765,7 @@ function AppContent() {
                     const formattedDate = new Date(e.date).toLocaleDateString('gu-IN', {
                       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                     });
-                    return formattedDate.includes(eventSearch);
+                    return !eventSearch.trim() || formattedDate.toLowerCase().includes(eventSearch.trim().toLowerCase());
                   });
 
                 if (filteredEvents.length === 0) {
@@ -1971,10 +1988,16 @@ function AppContent() {
                       <p className="empty-state-desc" style={{ marginBottom: 0 }}>હાજરી પૂરવા માટે પહેલા "સભ્યો" વિભાગમાંથી સભ્યો ઉમેરો.</p>
                     </div>
                   ) : (() => {
-                    const filteredMembers = displayMembers.filter(m =>
-                      m.name.toLowerCase().includes(attendanceSearch.toLowerCase()) ||
-                      m.uniqueCode.toLowerCase().includes(attendanceSearch.toLowerCase())
-                    );
+                    const filteredMembers = displayMembers.filter(m => {
+                      if (!attendanceSearch.trim()) return true;
+                      const q = attendanceSearch.toLowerCase();
+                      return (
+                        m.name.toLowerCase().includes(q) ||
+                        (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
+                        (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q)) ||
+                        (m.mobileNumber && m.mobileNumber.includes(q))
+                      );
+                    });
 
                     if (filteredMembers.length === 0) {
                       return (
@@ -2009,7 +2032,14 @@ function AppContent() {
                             >
                               <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                                 <div style={{ minWidth: 0, flex: 1 }}>
-                                  <h4 style={{ fontWeight: 500, fontSize: '1.05rem', color: '#111', overflowWrap: 'anywhere', margin: 0 }}>{member.name}</h4>
+                                  <h4 style={{ fontWeight: 500, fontSize: '1.05rem', color: '#111', overflowWrap: 'anywhere', margin: 0 }}>
+                                    {member.name}
+                                    {member.nameEn && (
+                                      <span style={{ fontSize: '0.82rem', color: '#6b7280', marginLeft: 6, fontWeight: 400 }}>
+                                        ({member.nameEn})
+                                      </span>
+                                    )}
+                                  </h4>
                                   <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, marginTop: 4 }}>
                                     SMK ID: <span style={{ fontWeight: 600 }}>{member.uniqueCode}</span>
                                   </p>
@@ -2209,6 +2239,7 @@ function AppContent() {
               <button className="btn-primary" onClick={() => {
                 setEditingMember(null);
                 setMemberName('');
+                setMemberEnName('');
                 setMemberCode('');
                 setMemberType('yuva');
                 setShowMemberModal(true);
@@ -2235,6 +2266,7 @@ function AppContent() {
               <button className="btn-primary" onClick={() => {
                 setEditingMember(null);
                 setMemberName('');
+                setMemberEnName('');
                 setMemberCode('');
                 setMemberType('yuva');
                 setShowMemberModal(true);
@@ -2252,6 +2284,11 @@ function AppContent() {
                         {CATEGORY_TAGS[member.type]}
                       </span>
                       <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: 8, overflowWrap: 'anywhere' }}>{member.name}</h3>
+                      {member.nameEn && (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                          {member.nameEn}
+                        </p>
+                      )}
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                         કોડ: {member.uniqueCode}
                       </p>
@@ -2377,7 +2414,15 @@ function AppContent() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
                   {members
-                    .filter(m => m.name.toLowerCase().includes(reportSearch.toLowerCase()) || m.uniqueCode.toLowerCase().includes(reportSearch.toLowerCase()))
+                    .filter(m => {
+                      if (!reportSearch.trim()) return true;
+                      const q = reportSearch.toLowerCase();
+                      return (
+                        m.name.toLowerCase().includes(q) ||
+                        (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
+                        (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q))
+                      );
+                    })
                     .map(member => {
                       const isSelected = selectedMemberReport && selectedMemberReport.member._id === member._id;
                       return (
@@ -2399,7 +2444,14 @@ function AppContent() {
                             padding: 10
                           }}
                         >
-                          <h4 style={{ fontSize: '0.9rem', fontWeight: 600 }}>{member.name}</h4>
+                          <h4 style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                            {member.name}
+                            {member.nameEn && (
+                              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginLeft: 6, fontWeight: 400 }}>
+                                ({member.nameEn})
+                              </span>
+                            )}
+                          </h4>
                           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
                             કોડ: {member.uniqueCode} | {CATEGORY_TAGS[member.type]}
                           </p>
@@ -2906,7 +2958,8 @@ function AppContent() {
                       });
                       const typeName = seva.sevaType ? seva.sevaType.name.toLowerCase() : '';
                       const leaderName = seva.leader ? seva.leader.toLowerCase() : '';
-                      const query = sevaSearch.toLowerCase();
+                      if (!sevaSearch.trim()) return true;
+                      const query = sevaSearch.trim().toLowerCase();
                       return formattedDate.toLowerCase().includes(query) || typeName.includes(query) || leaderName.includes(query);
                     });
 
@@ -3101,7 +3154,12 @@ function AppContent() {
                         const filteredSevaMembers = sevaMembers.filter(m => {
                           if (!sevaAttendanceSearch.trim()) return true;
                           const query = sevaAttendanceSearch.toLowerCase();
-                          return m.name.toLowerCase().includes(query) || m.uniqueCode.toLowerCase().includes(query);
+                          return (
+                            m.name.toLowerCase().includes(query) ||
+                            (m.nameEn && m.nameEn.toLowerCase().includes(query)) ||
+                            (m.uniqueCode && m.uniqueCode.toLowerCase().includes(query)) ||
+                            (m.mobileNumber && m.mobileNumber.includes(query))
+                          );
                         });
 
                         if (filteredSevaMembers.length === 0) {
@@ -3137,7 +3195,14 @@ function AppContent() {
                                 >
                                   <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                                     <div style={{ minWidth: 0, flex: 1 }}>
-                                      <h4 style={{ fontWeight: 500, fontSize: '1.05rem', color: '#111', overflowWrap: 'anywhere', margin: 0 }}>{m.name}</h4>
+                                      <h4 style={{ fontWeight: 500, fontSize: '1.05rem', color: '#111', overflowWrap: 'anywhere', margin: 0 }}>
+                                        {m.name}
+                                        {m.nameEn && (
+                                          <span style={{ fontSize: '0.82rem', color: '#6b7280', marginLeft: 6, fontWeight: 400 }}>
+                                            ({m.nameEn})
+                                          </span>
+                                        )}
+                                      </h4>
                                       <p style={{ fontSize: '0.8rem', color: '#666', margin: 0, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                         SMK ID: <span style={{ fontWeight: 600 }}>{m.uniqueCode}</span>
                                         <span className="badge badge-primary" style={{ padding: '2px 6px', fontSize: '0.7rem' }}>{SEVA_CATEGORY_TAGS[m.type] || m.type}</span>
@@ -3269,6 +3334,7 @@ function AppContent() {
                     onClick={() => {
                       setEditingSevaMember(null);
                       setSevaMemberName('');
+                      setSevaMemberEnName('');
                       setSevaMemberUniqueCode('');
                       setSevaMemberType('yuvti');
                       setShowSevaMemberModal(true);
@@ -3327,7 +3393,12 @@ function AppContent() {
               ) : (
                 (() => {
                   const filtered = sevaMembers.filter(m => {
-                    const matchesSearch = m.name.toLowerCase().includes(sevaMemberSearch.toLowerCase()) || m.uniqueCode.toLowerCase().includes(sevaMemberSearch.toLowerCase());
+                    const q = sevaMemberSearch.toLowerCase();
+                    const matchesSearch = !sevaMemberSearch.trim() ||
+                      m.name.toLowerCase().includes(q) ||
+                      (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
+                      (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q)) ||
+                      (m.mobileNumber && m.mobileNumber.includes(q));
                     const matchesType = sevaMemberTypeFilter === 'all' || m.type === sevaMemberTypeFilter;
                     return matchesSearch && matchesType;
                   });
@@ -3353,6 +3424,11 @@ function AppContent() {
                                 {SEVA_CATEGORY_TAGS[m.type] || m.type}
                               </span>
                               <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: 8, overflowWrap: 'anywhere' }}>{m.name}</h3>
+                              {m.nameEn && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                                  {m.nameEn}
+                                </p>
+                              )}
                               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
                                 કોડ: {m.uniqueCode}
                               </p>
@@ -3371,6 +3447,7 @@ function AppContent() {
                                 onClick={() => {
                                   setEditingSevaMember(m);
                                   setSevaMemberName(m.name);
+                                  setSevaMemberEnName(m.nameEn || transliterateGujaratiToEnglish(m.name));
                                   setSevaMemberType(m.type);
                                   setSevaMemberUniqueCode(m.uniqueCode);
                                   setSevaMemberMobileNumber(m.mobileNumber || '');
@@ -3483,7 +3560,15 @@ function AppContent() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
                       {sevaMembers
-                        .filter(m => m.name.toLowerCase().includes(sevaMemberReportSearch.toLowerCase()) || m.uniqueCode.toLowerCase().includes(sevaMemberReportSearch.toLowerCase()))
+                        .filter(m => {
+                          if (!sevaMemberReportSearch.trim()) return true;
+                          const q = sevaMemberReportSearch.toLowerCase();
+                          return (
+                            m.name.toLowerCase().includes(q) ||
+                            (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
+                            (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q))
+                          );
+                        })
                         .map(member => {
                           const isSelected = selectedSevaMemberReport && selectedSevaMemberReport.member._id === member._id;
                           return (
@@ -3505,7 +3590,14 @@ function AppContent() {
                                 padding: 10
                               }}
                             >
-                              <h4 style={{ fontSize: '0.9rem', fontWeight: 600 }}>{member.name}</h4>
+                              <h4 style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                                {member.name}
+                                {member.nameEn && (
+                                  <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginLeft: 6, fontWeight: 400 }}>
+                                    ({member.nameEn})
+                                  </span>
+                                )}
+                              </h4>
                               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
                                 કોડ: {member.uniqueCode} | {SEVA_CATEGORY_TAGS[member.type]}
                               </p>
@@ -3851,15 +3943,34 @@ function AppContent() {
 
               <form onSubmit={handleSaveSevaMember} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label className="form-label">નામ (Name)</label>
+                  <label className="form-label">નામ (ગુજરાતી)</label>
                   <input
                     type="text"
                     className="glass-input"
                     placeholder="નામ લખો, ઉદા. મોનિકા પટેલ"
                     value={sevaMemberName}
-                    onChange={(e) => setSevaMemberName(e.target.value)}
+                    onChange={(e) => {
+                      setSevaMemberName(e.target.value);
+                      if (!editingSevaMember || !sevaMemberEnName) {
+                        setSevaMemberEnName(transliterateGujaratiToEnglish(e.target.value));
+                      }
+                    }}
                     required
                   />
+                </div>
+
+                <div>
+                  <label className="form-label">અંગ્રેજી નામ (English Name - સર્ચ માટે)</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="Auto English name, e.g. Monika Patel"
+                    value={sevaMemberEnName}
+                    onChange={(e) => setSevaMemberEnName(e.target.value)}
+                  />
+                  <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                    આ નામ ફક્ત અંગ્રેજીમાં સર્ચ કરવા માટે છે, રિપોર્ટ્સમાં ગુજરાતી નામ જ રહેશે.
+                  </span>
                 </div>
 
                 <div>
@@ -4127,15 +4238,34 @@ function AppContent() {
 
               <form onSubmit={handleSaveMember} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label className="form-label">નામ (Name)</label>
+                  <label className="form-label">નામ (ગુજરાતી)</label>
                   <input
                     type="text"
                     className="glass-input"
                     placeholder="નામ લખો, ઉદા. યશ ગાંધી"
                     value={memberName}
-                    onChange={(e) => setMemberName(e.target.value)}
+                    onChange={(e) => {
+                      setMemberName(e.target.value);
+                      if (!editingMember || !memberEnName) {
+                        setMemberEnName(transliterateGujaratiToEnglish(e.target.value));
+                      }
+                    }}
                     required
                   />
+                </div>
+
+                <div>
+                  <label className="form-label">અંગ્રેજી નામ (English Name - સર્ચ માટે)</label>
+                  <input
+                    type="text"
+                    className="glass-input"
+                    placeholder="Auto English name, e.g. Yash Gandhi"
+                    value={memberEnName}
+                    onChange={(e) => setMemberEnName(e.target.value)}
+                  />
+                  <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                    આ નામ ફક્ત અંગ્રેજીમાં સર્ચ કરવા માટે છે, રિપોર્ટ્સમાં ગુજરાતી નામ જ રહેશે.
+                  </span>
                 </div>
 
                 <div>
