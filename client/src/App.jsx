@@ -2742,7 +2742,7 @@ function AppContent() {
                           ૧. રવિસભા: સમયસર / વહેલા પહોંચનાર શ્રેષ્ઠ ૧૦ (વહેલા સરેરાશ સમય મુજબ)
                         </h4>
                         <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', margin: 0, marginTop: 2 }}>
-                          રવિસભામાં સૌથી વહેલા સરેરાશ પહોંચવાનો સમય ધરાવતા સભ્યો
+                          રવિસભામાં સૌથી વહેલા સરેરાશ પહોંચવાનો સમય અને નિયમિત હાજરી ધરાવતા સભ્યો
                         </p>
                       </div>
                       <span className="badge badge-primary">
@@ -2760,7 +2760,7 @@ function AppContent() {
                           <tr>
                             <th style={{ textAlign: 'center', width: 90 }}>ક્રમ (સંખ્યા)</th>
                             <th style={{ textAlign: 'left' }}>સભ્ય / સભ્યોનું નામ</th>
-                            <th style={{ textAlign: 'center', width: 140 }}>સરેરાશ સમય (AVG Time)</th>
+                            <th style={{ textAlign: 'center', width: 150 }}>સરેરાશ સમય (AVG Time)</th>
                             <th style={{ textAlign: 'right', width: 120 }}>સભા હાજરી</th>
                           </tr>
                         </thead>
@@ -2774,7 +2774,7 @@ function AppContent() {
                                     fontWeight: 700,
                                     fontSize: '0.88rem',
                                     padding: '4px 10px',
-                                    background: group.rank <= 3 ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.05)',
+                                    background: group.rank <= 3 ? 'rgba(76, 5, 133, 0.15)' : 'rgba(255,255,255,0.05)',
                                     color: group.rank <= 3 ? 'var(--color-primary)' : 'inherit',
                                     border: group.rank <= 3 ? '1px solid var(--color-primary)' : '1px solid var(--glass-border)'
                                   }}

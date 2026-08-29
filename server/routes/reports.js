@@ -158,13 +158,33 @@ router.get('/member/:id', auth, async (req, res) => {
 });
 
 // @route   GET /api/reports/top-attendees
-// @desc    Get Ravi Sabha Top 10 on-time and late groups by average arrival time, with category filtering
+// @desc    Get Ravi Sabha Top 10 on-time and points leader groups, with category filtering
 // @access  Private (Admin)
 router.get('/top-attendees', auth, async (req, res) => {
   try {
     const { type } = req.query;
-    const raviEvents = await Event.find({ type: 'ravi_sabha' }).select('_id');
+    const raviEvents = await Event.find({ type: 'ravi_sabha' });
     const raviEventIds = raviEvents.map(e => e._id);
+
+    const eventMap = new Map();
+    for (const ev of raviEvents) {
+      let cutoffMinutes = 1110; // Default 6:30 PM (18:30)
+      if (ev.minReachTime && ev.minReachTime.trim()) {
+        const parts = ev.minReachTime.trim().split(':');
+        let h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1] || '0', 10);
+        if (!isNaN(h) && !isNaN(m)) {
+          if (h < 12) h += 12; // 06:30 PM
+          cutoffMinutes = h * 60 + m;
+        }
+      }
+      const startMinutes = 1050; // 5:30 PM
+      eventMap.set(ev._id.toString(), {
+        event: ev,
+        startMinutes,
+        cutoffMinutes
+      });
+    }
 
     const formatMinutesTo12h = (totalMins) => {
       const roundedMins = Math.round(totalMins);
@@ -189,57 +209,95 @@ router.get('/top-attendees', auth, async (req, res) => {
       return h * 60 + m;
     };
 
-    // Helper function to calculate average arrival time and group ties
-    const computeTopAvgGroups = async (matchCondition, sortAscending = true) => {
+    const computePointsForRecord = (record, evConfig) => {
+      if (record.status !== 'present') return 0;
+      const startMinutes = evConfig ? evConfig.startMinutes : 1050;
+      const cutoffMinutes = evConfig ? evConfig.cutoffMinutes : 1110;
+
+      if (!record.arrivalTime) {
+        return record.isLate ? 30 : 60;
+      }
+
+      const arrMins = getISTMinutes(record.arrivalTime);
+
+      if (record.isLate || arrMins > cutoffMinutes) {
+        return 30; // Late (30 points)
+      }
+
+      // Early / On-time points distribution
+      if (arrMins <= startMinutes + 15) {
+        return 100; // Super Early: 5:30 - 5:45 PM (100 points)
+      } else if (arrMins <= startMinutes + 45) {
+        return 80;  // On Time: 5:45 - 6:15 PM (80 points)
+      } else if (arrMins <= cutoffMinutes) {
+        return 60;  // Borderline: 6:15 - 6:30 PM (60 points)
+      } else {
+        return 30;  // Late
+      }
+    };
+
+    // 1. Compute Top Attendees Leaderboard by Points & Arrival Time
+    const computeTopPointsGroups = async () => {
       const records = await Attendance.find({
         event: { $in: raviEventIds },
-        status: 'present',
-        arrivalTime: { $exists: true, $ne: null },
-        ...matchCondition
+        status: 'present'
       }).populate('member');
 
-      const memberTimeMap = new Map();
+      const memberScoreMap = new Map();
 
       for (const record of records) {
         if (!record.member) continue;
         if (type && type !== 'all' && record.member.type !== type) continue;
 
         const memberId = record.member._id.toString();
-        const minutes = getISTMinutes(record.arrivalTime);
+        const evConfig = eventMap.get(record.event.toString());
+        const pts = computePointsForRecord(record, evConfig);
+        const arrivalMins = record.arrivalTime ? getISTMinutes(record.arrivalTime) : 0;
 
-        if (!memberTimeMap.has(memberId)) {
-          memberTimeMap.set(memberId, {
+        if (!memberScoreMap.has(memberId)) {
+          memberScoreMap.set(memberId, {
             member: record.member,
+            totalPoints: 0,
             totalMinutes: 0,
+            minutesCount: 0,
             count: 0
           });
         }
 
-        const data = memberTimeMap.get(memberId);
-        data.totalMinutes += minutes;
+        const data = memberScoreMap.get(memberId);
+        data.totalPoints += pts;
         data.count += 1;
+        if (arrivalMins > 0) {
+          data.totalMinutes += arrivalMins;
+          data.minutesCount += 1;
+        }
       }
 
       const calculated = [];
-      for (const [id, data] of memberTimeMap.entries()) {
-        const avgMinutes = data.totalMinutes / data.count;
-        const avgTimeFormatted = formatMinutesTo12h(avgMinutes);
+      for (const [id, data] of memberScoreMap.entries()) {
+        const avgMinutes = data.minutesCount > 0 ? (data.totalMinutes / data.minutesCount) : 0;
+        const avgTimeFormatted = avgMinutes > 0 ? formatMinutesTo12h(avgMinutes) : '-';
         calculated.push({
           member: data.member,
           count: data.count,
+          totalPoints: data.totalPoints,
           avgMinutes: Math.round(avgMinutes),
           avgTime: avgTimeFormatted
         });
       }
 
+      // Sort: Highest Points -> Earliest Avg Time -> Highest Sabha Count -> Name
       calculated.sort((a, b) => {
-        if (a.avgMinutes !== b.avgMinutes) {
-          return sortAscending ? (a.avgMinutes - b.avgMinutes) : (b.avgMinutes - a.avgMinutes);
+        if (b.totalPoints !== a.totalPoints) {
+          return b.totalPoints - a.totalPoints;
+        }
+        if (a.avgMinutes > 0 && b.avgMinutes > 0 && a.avgMinutes !== b.avgMinutes) {
+          return a.avgMinutes - b.avgMinutes;
         }
         if (b.count !== a.count) {
           return b.count - a.count;
         }
-        return a.member.name.localeCompare(b.member.name, 'gu');
+        return (a.member.name || '').localeCompare(b.member.name || '', 'gu');
       });
 
       const groups = [];
@@ -247,27 +305,37 @@ router.get('/top-attendees', auth, async (req, res) => {
       let index = 0;
 
       while (index < calculated.length && currentRank <= 10) {
+        const currentPoints = calculated[index].totalPoints;
         const currentAvgMinutes = calculated[index].avgMinutes;
+        const currentCount = calculated[index].count;
         const currentAvgTime = calculated[index].avgTime;
         const groupMembers = [];
 
-        while (index < calculated.length && calculated[index].avgMinutes === currentAvgMinutes) {
+        while (
+          index < calculated.length &&
+          calculated[index].totalPoints === currentPoints &&
+          calculated[index].avgMinutes === currentAvgMinutes &&
+          calculated[index].count === currentCount
+        ) {
+          const item = calculated[index];
           groupMembers.push({
-            _id: calculated[index].member._id,
-            name: calculated[index].member.name,
-            nameEn: calculated[index].member.nameEn,
-            uniqueCode: calculated[index].member.uniqueCode,
-            type: calculated[index].member.type,
-            count: calculated[index].count,
-            avgTime: calculated[index].avgTime
+            _id: item.member._id,
+            name: item.member.name,
+            nameEn: item.member.nameEn,
+            uniqueCode: item.member.uniqueCode,
+            type: item.member.type,
+            count: item.count,
+            totalPoints: item.totalPoints,
+            avgTime: item.avgTime
           });
           index++;
         }
 
         groups.push({
           rank: currentRank,
-          rankLabel: `${currentRank}(${groupMembers.length})`,
+          rankLabel: groupMembers.length > 1 ? `${currentRank}(${groupMembers.length})` : `${currentRank}`,
           count: groupMembers.length,
+          totalPoints: currentPoints,
           avgTime: currentAvgTime,
           avgMinutes: currentAvgMinutes,
           members: groupMembers
@@ -279,11 +347,106 @@ router.get('/top-attendees', auth, async (req, res) => {
       return groups;
     };
 
-    // 1. Ravi Sabha Early / On-Time AVG Time Top 10 (sorted ascending = earliest first)
-    const raviTopGroups = await computeTopAvgGroups({}, true);
+    // 2. Compute Most Late Attendees Group
+    const computeLateGroups = async () => {
+      const records = await Attendance.find({
+        event: { $in: raviEventIds },
+        status: 'present',
+        isLate: true
+      }).populate('member');
 
-    // 2. Ravi Sabha Late AVG Time Top 10 (isLate: true, sorted descending = most late first)
-    const raviLateGroups = await computeTopAvgGroups({ isLate: true }, false);
+      const memberLateMap = new Map();
+
+      for (const record of records) {
+        if (!record.member) continue;
+        if (type && type !== 'all' && record.member.type !== type) continue;
+
+        const memberId = record.member._id.toString();
+        const arrivalMins = record.arrivalTime ? getISTMinutes(record.arrivalTime) : 0;
+
+        if (!memberLateMap.has(memberId)) {
+          memberLateMap.set(memberId, {
+            member: record.member,
+            lateCount: 0,
+            totalLateMinutes: 0,
+            minutesCount: 0
+          });
+        }
+
+        const data = memberLateMap.get(memberId);
+        data.lateCount += 1;
+        if (arrivalMins > 0) {
+          data.totalLateMinutes += arrivalMins;
+          data.minutesCount += 1;
+        }
+      }
+
+      const calculated = [];
+      for (const [id, data] of memberLateMap.entries()) {
+        const avgMinutes = data.minutesCount > 0 ? (data.totalLateMinutes / data.minutesCount) : 0;
+        const avgTimeFormatted = avgMinutes > 0 ? formatMinutesTo12h(avgMinutes) : '-';
+        calculated.push({
+          member: data.member,
+          count: data.lateCount,
+          avgMinutes: Math.round(avgMinutes),
+          avgTime: avgTimeFormatted
+        });
+      }
+
+      calculated.sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        if (b.avgMinutes !== a.avgMinutes) {
+          return b.avgMinutes - a.avgMinutes;
+        }
+        return (a.member.name || '').localeCompare(b.member.name || '', 'gu');
+      });
+
+      const groups = [];
+      let currentRank = 1;
+      let index = 0;
+
+      while (index < calculated.length && currentRank <= 10) {
+        const currentCount = calculated[index].count;
+        const currentAvgMinutes = calculated[index].avgMinutes;
+        const groupMembers = [];
+
+        while (
+          index < calculated.length &&
+          calculated[index].count === currentCount &&
+          calculated[index].avgMinutes === currentAvgMinutes
+        ) {
+          const item = calculated[index];
+          groupMembers.push({
+            _id: item.member._id,
+            name: item.member.name,
+            nameEn: item.member.nameEn,
+            uniqueCode: item.member.uniqueCode,
+            type: item.member.type,
+            count: item.count,
+            avgTime: item.avgTime
+          });
+          index++;
+        }
+
+        groups.push({
+          rank: currentRank,
+          rankLabel: `${currentRank}(${groupMembers.length})`,
+          count: groupMembers.length,
+          avgTime: calculated[index - 1]?.avgTime || '-',
+          avgMinutes: currentAvgMinutes,
+          members: groupMembers
+        });
+
+        currentRank++;
+      }
+
+      return groups;
+    };
+
+    const raviTopGroups = await computeTopPointsGroups();
+    const raviLateGroups = await computeLateGroups();
 
     res.json({
       raviTopGroups,
