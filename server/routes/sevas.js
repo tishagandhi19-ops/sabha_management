@@ -5,6 +5,7 @@ import SevaAttendance from '../models/SevaAttendance.js';
 import SevaMember from '../models/SevaMember.js';
 import auth from '../middleware/auth.js';
 import { transliterateGujaratiToEnglish } from '../utils/transliterate.js';
+import { sortMembersBySearchRank } from '../utils/searchRank.js';
 
 const router = express.Router();
 
@@ -113,7 +114,8 @@ router.get('/members', auth, async (req, res) => {
       query.type = type;
     }
 
-    const members = await SevaMember.find(query).sort({ name: 1 });
+    let members = await SevaMember.find(query);
+    members = sortMembersBySearchRank(members, cleanSearch);
     res.json(members);
   } catch (err) {
     console.error(err.message);

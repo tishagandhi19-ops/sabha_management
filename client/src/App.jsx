@@ -36,6 +36,7 @@ import {
 } from './components/Loaders';
 import InstallPWA from './components/InstallPWA';
 import { transliterateGujaratiToEnglish } from './utils/transliterate';
+import { sortMembersBySearchRank } from './utils/searchRank';
 
 // Localization mapping for categories
 const CATEGORY_LABELS = {
@@ -1997,16 +1998,19 @@ function AppContent() {
                       <p className="empty-state-desc" style={{ marginBottom: 0 }}>હાજરી પૂરવા માટે પહેલા "સભ્યો" વિભાગમાંથી સભ્યો ઉમેરો.</p>
                     </div>
                   ) : (() => {
-                    const filteredMembers = displayMembers.filter(m => {
-                      if (!attendanceSearch.trim()) return true;
-                      const q = attendanceSearch.toLowerCase();
-                      return (
-                        m.name.toLowerCase().includes(q) ||
-                        (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
-                        (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q)) ||
-                        (m.mobileNumber && m.mobileNumber.includes(q))
-                      );
-                    });
+                    const filteredMembers = sortMembersBySearchRank(
+                      displayMembers.filter(m => {
+                        if (!attendanceSearch.trim()) return true;
+                        const q = attendanceSearch.toLowerCase();
+                        return (
+                          m.name.toLowerCase().includes(q) ||
+                          (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
+                          (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q)) ||
+                          (m.mobileNumber && m.mobileNumber.includes(q))
+                        );
+                      }),
+                      attendanceSearch
+                    );
 
                     if (filteredMembers.length === 0) {
                       return (
@@ -2422,8 +2426,8 @@ function AppContent() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
-                  {members
-                    .filter(m => {
+                  {sortMembersBySearchRank(
+                    members.filter(m => {
                       if (!reportSearch.trim()) return true;
                       const q = reportSearch.toLowerCase();
                       return (
@@ -2431,7 +2435,9 @@ function AppContent() {
                         (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
                         (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q))
                       );
-                    })
+                    }),
+                    reportSearch
+                  )
                     .map(member => {
                       const isSelected = selectedMemberReport && selectedMemberReport.member._id === member._id;
                       return (
@@ -3231,16 +3237,19 @@ function AppContent() {
                           <p className="empty-state-desc" style={{ marginBottom: 0 }}>હાજરી પૂરવા માટે પહેલા "સભ્યો" વિભાગમાંથી સભ્યો ઉમેરો.</p>
                         </div>
                       ) : (() => {
-                        const filteredSevaMembers = sevaMembers.filter(m => {
-                          if (!sevaAttendanceSearch.trim()) return true;
-                          const query = sevaAttendanceSearch.toLowerCase();
-                          return (
-                            m.name.toLowerCase().includes(query) ||
-                            (m.nameEn && m.nameEn.toLowerCase().includes(query)) ||
-                            (m.uniqueCode && m.uniqueCode.toLowerCase().includes(query)) ||
-                            (m.mobileNumber && m.mobileNumber.includes(query))
-                          );
-                        });
+                        const filteredSevaMembers = sortMembersBySearchRank(
+                          sevaMembers.filter(m => {
+                            if (!sevaAttendanceSearch.trim()) return true;
+                            const query = sevaAttendanceSearch.toLowerCase();
+                            return (
+                              m.name.toLowerCase().includes(query) ||
+                              (m.nameEn && m.nameEn.toLowerCase().includes(query)) ||
+                              (m.uniqueCode && m.uniqueCode.toLowerCase().includes(query)) ||
+                              (m.mobileNumber && m.mobileNumber.includes(query))
+                            );
+                          }),
+                          sevaAttendanceSearch
+                        );
 
                         if (filteredSevaMembers.length === 0) {
                           return (
@@ -3496,7 +3505,7 @@ function AppContent() {
 
                   return (
                     <div className="grid-3">
-                      {[...filtered].sort((a, b) => a.name.localeCompare(b.name, 'gu')).map(m => (
+                      {sortMembersBySearchRank(filtered, sevaMemberSearch).map(m => (
                         <div key={m._id} className="glass-panel glass-panel-hover" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                             <div style={{ minWidth: 0 }}>
@@ -3639,8 +3648,8 @@ function AppContent() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '350px', overflowY: 'auto', paddingRight: 4 }}>
-                      {sevaMembers
-                        .filter(m => {
+                      {sortMembersBySearchRank(
+                        sevaMembers.filter(m => {
                           if (!sevaMemberReportSearch.trim()) return true;
                           const q = sevaMemberReportSearch.toLowerCase();
                           return (
@@ -3648,7 +3657,9 @@ function AppContent() {
                             (m.nameEn && m.nameEn.toLowerCase().includes(q)) ||
                             (m.uniqueCode && m.uniqueCode.toLowerCase().includes(q))
                           );
-                        })
+                        }),
+                        sevaMemberReportSearch
+                      )
                         .map(member => {
                           const isSelected = selectedSevaMemberReport && selectedSevaMemberReport.member._id === member._id;
                           return (

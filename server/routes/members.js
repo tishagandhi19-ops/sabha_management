@@ -3,6 +3,7 @@ import Member from '../models/Member.js';
 import Attendance from '../models/Attendance.js';
 import auth from '../middleware/auth.js';
 import { transliterateGujaratiToEnglish } from '../utils/transliterate.js';
+import { sortMembersBySearchRank } from '../utils/searchRank.js';
 
 const router = express.Router();
 
@@ -28,7 +29,8 @@ router.get('/', auth, async (req, res) => {
       query.type = type;
     }
 
-    const members = await Member.find(query).sort({ name: 1 });
+    let members = await Member.find(query);
+    members = sortMembersBySearchRank(members, cleanSearch);
     res.json(members);
   } catch (err) {
     console.error(err.message);
