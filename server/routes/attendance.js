@@ -2,6 +2,7 @@ import express from 'express';
 import Attendance from '../models/Attendance.js';
 import Event from '../models/Event.js';
 import auth from '../middleware/auth.js';
+import { transliterateEnglishToGujarati } from '../utils/englishToGujarati.js';
 
 const router = express.Router();
 
@@ -41,7 +42,7 @@ router.post('/bulk', auth, async (req, res) => {
           status,
           arrivalTime: status === 'present' ? (arrivalTime ? new Date(arrivalTime) : new Date()) : null,
           isLate: status === 'present' ? !!isLate : false,
-          remark: remark || ''
+          remark: remark ? transliterateEnglishToGujarati(remark.toString().trim()) : ''
         };
 
         operations.push({

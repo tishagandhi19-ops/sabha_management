@@ -36,7 +36,19 @@ import {
 } from './components/Loaders';
 import InstallPWA from './components/InstallPWA';
 import { transliterateGujaratiToEnglish } from './utils/transliterate';
+import { transliterateEnglishToGujarati } from './utils/englishToGujarati';
 import { sortMembersBySearchRank } from './utils/searchRank';
+
+// Predefined Late Reasons in Gujarati
+const LATE_REASON_OPTIONS = [
+  'દુકાન',
+  'ધંધાર્થે',
+  'આળસ',
+  'ઊંઘતા હતા',
+  'બહારગામ ગયા હોવાથી',
+  'ભણતા હતા',
+  'અન્ય'
+];
 
 // Localization mapping for categories
 const CATEGORY_LABELS = {
@@ -1162,7 +1174,10 @@ function AppContent() {
     setAttendanceProgress(20);
 
     try {
-      const recordsArray = Object.values(attendanceRecords);
+      const recordsArray = Object.values(attendanceRecords).map(rec => ({
+        ...rec,
+        remark: rec.remark ? transliterateEnglishToGujarati(rec.remark.toString().trim()) : ''
+      }));
       setAttendanceProgress(50);
 
       await apiRequest('/api/attendance/bulk', {
@@ -2157,14 +2172,74 @@ function AppContent() {
                                   </div>
 
                                   {rec.isLate && (
-                                    <input
-                                      type="text"
-                                      className="glass-input"
-                                      placeholder="મોડા આવવાનું કારણ લખો (નોંધ)..."
-                                      value={rec.remark}
-                                      onChange={(e) => handleRemarkChange(member._id, e.target.value)}
-                                      style={{ padding: '8px 12px', minHeight: 38, fontSize: '0.8rem', borderRadius: 8 }}
-                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                                      {/* Predefined Quick-Select Options in Gujarati */}
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {LATE_REASON_OPTIONS.map((opt) => {
+                                          const currentTrimmed = (rec.remark || '').trim();
+                                          const isSelected = opt === 'અન્ય'
+                                            ? Boolean(currentTrimmed && !LATE_REASON_OPTIONS.slice(0, 6).includes(currentTrimmed))
+                                            : currentTrimmed === opt;
+                                          return (
+                                            <button
+                                              key={opt}
+                                              type="button"
+                                              onClick={() => {
+                                                if (opt === 'અન્ય') {
+                                                  if (LATE_REASON_OPTIONS.slice(0, 6).includes(currentTrimmed)) {
+                                                    handleRemarkChange(member._id, '');
+                                                  }
+                                                  setTimeout(() => {
+                                                    document.getElementById(`late-reason-input-${member._id}`)?.focus();
+                                                  }, 50);
+                                                } else {
+                                                  handleRemarkChange(member._id, isSelected ? '' : opt);
+                                                }
+                                              }}
+                                              style={{
+                                                padding: '3px 9px',
+                                                fontSize: '0.75rem',
+                                                borderRadius: 14,
+                                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--glass-border-strong)',
+                                                background: isSelected ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.6)',
+                                                color: isSelected ? '#ffffff' : 'var(--color-text-primary)',
+                                                cursor: 'pointer',
+                                                fontWeight: isSelected ? 600 : 500,
+                                                transition: 'all 0.15s ease',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4
+                                              }}
+                                            >
+                                              {isSelected && <Check size={11} />}
+                                              {opt}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+
+                                      <input
+                                        id={`late-reason-input-${member._id}`}
+                                        type="text"
+                                        className="glass-input"
+                                        placeholder="મોડા આવવાનું કારણ લખો (દા.ત. dukan → દુકાન)..."
+                                        value={rec.remark || ''}
+                                        onChange={(e) => {
+                                          let val = e.target.value;
+                                          if (val.endsWith(' ')) {
+                                            val = transliterateEnglishToGujarati(val);
+                                          }
+                                          handleRemarkChange(member._id, val);
+                                        }}
+                                        onBlur={(e) => {
+                                          const converted = transliterateEnglishToGujarati(e.target.value);
+                                          if (converted !== e.target.value) {
+                                            handleRemarkChange(member._id, converted);
+                                          }
+                                        }}
+                                        style={{ padding: '8px 12px', minHeight: 38, fontSize: '0.8rem', borderRadius: 8 }}
+                                      />
+                                    </div>
                                   )}
                                 </div>
                               )}
