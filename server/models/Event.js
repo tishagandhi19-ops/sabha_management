@@ -7,7 +7,8 @@ const EventSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['savar_ni_katha', 'ravi_sabha'],
+    enum: ['ravi_sabha'],
+    default: 'ravi_sabha',
     required: true
   },
   minReachTime: {

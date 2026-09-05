@@ -6,6 +6,75 @@ import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
+const formatMinutesTo12h = (totalMins) => {
+  if (!totalMins || isNaN(totalMins) || totalMins <= 0) return '-';
+  const roundedMins = Math.round(totalMins);
+  const h24 = Math.floor(roundedMins / 60) % 24;
+  const mins = roundedMins % 60;
+  const ampm = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = (h24 % 12) || 12;
+  return `${String(h12).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${ampm}`;
+};
+
+const getISTMinutes = (dateInput) => {
+  const d = new Date(dateInput);
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.format(d).split(':');
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  return h * 60 + m;
+};
+
+const getEventConfig = (ev) => {
+  let cutoffMinutes = 1110; // Default 6:30 PM (18:30)
+  if (ev && ev.minReachTime && ev.minReachTime.trim()) {
+    const parts = ev.minReachTime.trim().split(':');
+    let h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1] || '0', 10);
+    if (!isNaN(h) && !isNaN(m)) {
+      if (h < 12) h += 12; // 06:30 PM
+      cutoffMinutes = h * 60 + m;
+    }
+  }
+  const startMinutes = 1050; // 5:30 PM
+  return {
+    startMinutes,
+    cutoffMinutes
+  };
+};
+
+const computePointsForRecord = (record, evConfig) => {
+  if (record.status !== 'present') return 0;
+  const startMinutes = evConfig ? evConfig.startMinutes : 1050;
+  const cutoffMinutes = evConfig ? evConfig.cutoffMinutes : 1110;
+
+  if (!record.arrivalTime) {
+    return record.isLate ? 30 : 60;
+  }
+
+  const arrMins = getISTMinutes(record.arrivalTime);
+
+  if (record.isLate || arrMins > cutoffMinutes) {
+    return 30; // Late (30 points)
+  }
+
+  // Early / On-time points distribution
+  if (arrMins <= startMinutes + 15) {
+    return 100; // Super Early: 5:30 - 5:45 PM (100 points)
+  } else if (arrMins <= startMinutes + 45) {
+    return 80;  // On Time: 5:45 - 6:15 PM (80 points)
+  } else if (arrMins <= cutoffMinutes) {
+    return 60;  // Borderline: 6:15 - 6:30 PM (60 points)
+  } else {
+    return 30;  // Late
+  }
+};
+
 // @route   GET /api/reports/dashboard
 // @desc    Get aggregate stats for dashboard reports
 // @access  Private (Admin)
@@ -32,10 +101,8 @@ router.get('/dashboard', auth, async (req, res) => {
     const presentAttendanceDocs = await Attendance.countDocuments({ status: 'present' });
     const overallRate = totalAttendanceDocs > 0 ? (presentAttendanceDocs / totalAttendanceDocs) * 100 : 0;
 
-    // Average attendance rate by event type
+    // Average attendance rate for Ravi Sabha
     const events = await Event.find();
-    let savarKathaTotal = 0;
-    let savarKathaPresent = 0;
     let raviSabhaTotal = 0;
     let raviSabhaPresent = 0;
     let raviSabhaLate = 0;
@@ -54,18 +121,12 @@ router.get('/dashboard', auth, async (req, res) => {
       ]);
 
       if (counts.length > 0) {
-        if (event.type === 'savar_ni_katha') {
-          savarKathaTotal += counts[0].total;
-          savarKathaPresent += counts[0].present;
-        } else if (event.type === 'ravi_sabha') {
-          raviSabhaTotal += counts[0].total;
-          raviSabhaPresent += counts[0].present;
-          raviSabhaLate += counts[0].late;
-        }
+        raviSabhaTotal += counts[0].total;
+        raviSabhaPresent += counts[0].present;
+        raviSabhaLate += counts[0].late;
       }
     }
 
-    const savarKathaRate = savarKathaTotal > 0 ? (savarKathaPresent / savarKathaTotal) * 100 : 0;
     const raviSabhaRate = raviSabhaTotal > 0 ? (raviSabhaPresent / raviSabhaTotal) * 100 : 0;
     const raviSabhaLateRate = raviSabhaPresent > 0 ? (raviSabhaLate / raviSabhaPresent) * 100 : 0;
 
@@ -74,7 +135,6 @@ router.get('/dashboard', auth, async (req, res) => {
       totalEvents,
       memberTypeBreakdown: typesMap,
       overallAttendanceRate: Math.round(overallRate * 10) / 10,
-      savarKathaRate: Math.round(savarKathaRate * 10) / 10,
       raviSabhaRate: Math.round(raviSabhaRate * 10) / 10,
       raviSabhaLateCount: raviSabhaLate,
       raviSabhaLateRate: Math.round(raviSabhaLateRate * 10) / 10
@@ -95,6 +155,9 @@ router.get('/member/:id', auth, async (req, res) => {
       return res.status(404).json({ msg: 'સભ્ય મળ્યો નથી' });
     }
 
+    // Total created Ravi Sabha events
+    const totalCreatedEvents = await Event.countDocuments({ type: 'ravi_sabha' });
+
     // Get all attendance logs for this member
     const attendanceLogs = await Attendance.find({ member: req.params.id })
       .populate('event')
@@ -103,41 +166,58 @@ router.get('/member/:id', auth, async (req, res) => {
     // Filter out populated logs with null events (in case an event was deleted but index is updating)
     const validLogs = attendanceLogs.filter(log => log.event != null);
 
-    const totalEventCount = validLogs.length;
-    const presentCount = validLogs.filter(log => log.status === 'present').length;
-    const absentCount = totalEventCount - presentCount;
-    const lateCount = validLogs.filter(log => log.status === 'present' && log.isLate).length;
-    const attendanceRate = totalEventCount > 0 ? (presentCount / totalEventCount) * 100 : 0;
+    const presentLogs = validLogs.filter(log => log.status === 'present');
+    const presentCount = presentLogs.length;
+    const lateLogs = validLogs.filter(log => log.status === 'present' && log.isLate);
+    const lateCount = lateLogs.length;
+    const absentCount = validLogs.filter(log => log.status === 'absent').length;
 
-    // Filter events by type for breakdown
-    const savarLogs = validLogs.filter(log => log.event.type === 'savar_ni_katha');
-    const savarTotal = savarLogs.length;
-    const savarPresent = savarLogs.filter(log => log.status === 'present').length;
-    const savarRate = savarTotal > 0 ? (savarPresent / savarTotal) * 100 : 0;
+    // Denominator for total created events vs logged events
+    const effectiveTotalEvents = totalCreatedEvents > 0 ? totalCreatedEvents : validLogs.length;
+    const attendanceRate = effectiveTotalEvents > 0 ? (presentCount / effectiveTotalEvents) * 100 : 0;
 
-    const raviLogs = validLogs.filter(log => log.event.type === 'ravi_sabha');
-    const raviTotal = raviLogs.length;
-    const raviPresent = raviLogs.filter(log => log.status === 'present').length;
-    const raviRate = raviTotal > 0 ? (raviPresent / raviTotal) * 100 : 0;
+    // Calculate Points and Average Arrival Time for Ravi Sabha
+    let totalPoints = 0;
+    let totalMinutes = 0;
+    let minutesCount = 0;
 
-    // Extract late remarks
-    const remarks = validLogs
-      .filter(log => log.isLate && log.remark)
-      .map(log => ({
-        date: log.event.date,
-        remark: log.remark
-      }));
+    for (const log of presentLogs) {
+      const evConfig = getEventConfig(log.event);
+      totalPoints += computePointsForRecord(log, evConfig);
+
+      if (log.arrivalTime) {
+        const arrMins = getISTMinutes(log.arrivalTime);
+        if (arrMins > 0) {
+          totalMinutes += arrMins;
+          minutesCount += 1;
+        }
+      }
+    }
+
+    const avgMinutes = minutesCount > 0 ? totalMinutes / minutesCount : 0;
+    const avgTime = avgMinutes > 0 ? formatMinutesTo12h(avgMinutes) : '-';
+
+    // Extract all late remarks.
+    // If a remark was provided, use that remark.
+    // If no remark was provided, but the member was late in that sabha, show as 'અન્ય'
+    const remarks = lateLogs.map(log => ({
+      date: log.event.date,
+      arrivalTime: log.arrivalTime,
+      remark: (log.remark && log.remark.trim()) ? log.remark.trim() : 'અન્ય'
+    }));
 
     res.json({
       member,
       stats: {
-        totalEvents: totalEventCount,
+        totalCreatedEvents: effectiveTotalEvents,
+        totalEvents: effectiveTotalEvents,
         present: presentCount,
         absent: absentCount,
         late: lateCount,
-        attendanceRate: Math.round(attendanceRate * 10) / 10,
-        savarKathaRate: Math.round(savarRate * 10) / 10,
-        raviSabhaRate: Math.round(raviRate * 10) / 10
+        totalPoints,
+        avgMinutes: Math.round(avgMinutes),
+        avgTime,
+        attendanceRate: Math.round(attendanceRate * 10) / 10
       },
       history: validLogs.map(log => ({
         _id: log._id,
@@ -147,7 +227,7 @@ router.get('/member/:id', auth, async (req, res) => {
         status: log.status,
         arrivalTime: log.arrivalTime,
         isLate: log.isLate,
-        remark: log.remark
+        remark: (log.isLate && (!log.remark || !log.remark.trim())) ? 'અન્ય' : (log.remark || '')
       })),
       remarks
     });
@@ -168,73 +248,8 @@ router.get('/top-attendees', auth, async (req, res) => {
 
     const eventMap = new Map();
     for (const ev of raviEvents) {
-      let cutoffMinutes = 1110; // Default 6:30 PM (18:30)
-      if (ev.minReachTime && ev.minReachTime.trim()) {
-        const parts = ev.minReachTime.trim().split(':');
-        let h = parseInt(parts[0], 10);
-        const m = parseInt(parts[1] || '0', 10);
-        if (!isNaN(h) && !isNaN(m)) {
-          if (h < 12) h += 12; // 06:30 PM
-          cutoffMinutes = h * 60 + m;
-        }
-      }
-      const startMinutes = 1050; // 5:30 PM
-      eventMap.set(ev._id.toString(), {
-        event: ev,
-        startMinutes,
-        cutoffMinutes
-      });
+      eventMap.set(ev._id.toString(), getEventConfig(ev));
     }
-
-    const formatMinutesTo12h = (totalMins) => {
-      const roundedMins = Math.round(totalMins);
-      const h24 = Math.floor(roundedMins / 60) % 24;
-      const mins = roundedMins % 60;
-      const ampm = h24 >= 12 ? 'PM' : 'AM';
-      const h12 = (h24 % 12) || 12;
-      return `${String(h12).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${ampm}`;
-    };
-
-    const getISTMinutes = (dateInput) => {
-      const d = new Date(dateInput);
-      const formatter = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Kolkata',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-      const parts = formatter.format(d).split(':');
-      const h = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10);
-      return h * 60 + m;
-    };
-
-    const computePointsForRecord = (record, evConfig) => {
-      if (record.status !== 'present') return 0;
-      const startMinutes = evConfig ? evConfig.startMinutes : 1050;
-      const cutoffMinutes = evConfig ? evConfig.cutoffMinutes : 1110;
-
-      if (!record.arrivalTime) {
-        return record.isLate ? 30 : 60;
-      }
-
-      const arrMins = getISTMinutes(record.arrivalTime);
-
-      if (record.isLate || arrMins > cutoffMinutes) {
-        return 30; // Late (30 points)
-      }
-
-      // Early / On-time points distribution
-      if (arrMins <= startMinutes + 15) {
-        return 100; // Super Early: 5:30 - 5:45 PM (100 points)
-      } else if (arrMins <= startMinutes + 45) {
-        return 80;  // On Time: 5:45 - 6:15 PM (80 points)
-      } else if (arrMins <= cutoffMinutes) {
-        return 60;  // Borderline: 6:15 - 6:30 PM (60 points)
-      } else {
-        return 30;  // Late
-      }
-    };
 
     // 1. Compute Top Attendees Leaderboard by Points & Arrival Time
     const computeTopPointsGroups = async () => {
@@ -347,7 +362,7 @@ router.get('/top-attendees', auth, async (req, res) => {
       return groups;
     };
 
-    // 2. Compute Most Late Attendees Group
+    // 2. Compute Most Late Attendees Group (Top 20)
     const computeLateGroups = async () => {
       const records = await Attendance.find({
         event: { $in: raviEventIds },
@@ -363,18 +378,21 @@ router.get('/top-attendees', auth, async (req, res) => {
 
         const memberId = record.member._id.toString();
         const arrivalMins = record.arrivalTime ? getISTMinutes(record.arrivalTime) : 0;
+        const reason = (record.remark && record.remark.trim()) ? record.remark.trim() : 'અન્ય';
 
         if (!memberLateMap.has(memberId)) {
           memberLateMap.set(memberId, {
             member: record.member,
             lateCount: 0,
             totalLateMinutes: 0,
-            minutesCount: 0
+            minutesCount: 0,
+            reasonCounts: {}
           });
         }
 
         const data = memberLateMap.get(memberId);
         data.lateCount += 1;
+        data.reasonCounts[reason] = (data.reasonCounts[reason] || 0) + 1;
         if (arrivalMins > 0) {
           data.totalLateMinutes += arrivalMins;
           data.minutesCount += 1;
@@ -385,11 +403,23 @@ router.get('/top-attendees', auth, async (req, res) => {
       for (const [id, data] of memberLateMap.entries()) {
         const avgMinutes = data.minutesCount > 0 ? (data.totalLateMinutes / data.minutesCount) : 0;
         const avgTimeFormatted = avgMinutes > 0 ? formatMinutesTo12h(avgMinutes) : '-';
+
+        // Get top 3 reasons sorted by frequency descending
+        const topReasons = Object.entries(data.reasonCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([reason, cnt]) => ({
+            reason,
+            count: cnt,
+            label: cnt > 1 ? `${reason} (${cnt})` : reason
+          }));
+
         calculated.push({
           member: data.member,
           count: data.lateCount,
           avgMinutes: Math.round(avgMinutes),
-          avgTime: avgTimeFormatted
+          avgTime: avgTimeFormatted,
+          topReasons
         });
       }
 
@@ -407,7 +437,7 @@ router.get('/top-attendees', auth, async (req, res) => {
       let currentRank = 1;
       let index = 0;
 
-      while (index < calculated.length && currentRank <= 10) {
+      while (index < calculated.length && currentRank <= 20) {
         const currentCount = calculated[index].count;
         const currentAvgMinutes = calculated[index].avgMinutes;
         const groupMembers = [];
@@ -425,7 +455,8 @@ router.get('/top-attendees', auth, async (req, res) => {
             uniqueCode: item.member.uniqueCode,
             type: item.member.type,
             count: item.count,
-            avgTime: item.avgTime
+            avgTime: item.avgTime,
+            topReasons: item.topReasons
           });
           index++;
         }

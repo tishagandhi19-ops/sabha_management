@@ -36,7 +36,7 @@ app.get('/health', (req, res) => {
 
 // Base route
 app.get('/', (req, res) => {
-  res.send('Sabha Management System API (સવારની કથા અને રવિસભા)');
+  res.send('Sabha Management System API (રવિસભા)');
 });
 
 // Self-ping Render URL every 5 minutes to prevent spin-down/sleep

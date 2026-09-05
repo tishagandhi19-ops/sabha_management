@@ -22,17 +22,17 @@ router.get('/', auth, async (req, res) => {
 // @desc    Create a new event
 // @access  Private (Admin)
 router.post('/', auth, async (req, res) => {
-  const { date, type, minReachTime } = req.body;
+  const { date, type = 'ravi_sabha', minReachTime } = req.body;
 
-  if (!date || !type) {
-    return res.status(400).json({ msg: 'કૃપા કરીને તારીખ અને સભાનો પ્રકાર પસંદ કરો' }); // "Please select date and event type"
+  if (!date) {
+    return res.status(400).json({ msg: 'કૃપા કરીને તારીખ પસંદ કરો' });
   }
 
   try {
     const newEvent = new Event({
       date: new Date(date),
-      type,
-      minReachTime: type === 'ravi_sabha' ? minReachTime || '' : ''
+      type: 'ravi_sabha',
+      minReachTime: minReachTime || ''
     });
 
     const event = await newEvent.save();
@@ -67,16 +67,11 @@ router.get('/:id', auth, async (req, res) => {
 // @desc    Update an event
 // @access  Private (Admin)
 router.put('/:id', auth, async (req, res) => {
-  const { date, type, minReachTime } = req.body;
+  const { date, minReachTime } = req.body;
 
-  const updateFields = {};
+  const updateFields = { type: 'ravi_sabha' };
   if (date) updateFields.date = new Date(date);
-  if (type) updateFields.type = type;
-  if (type === 'ravi_sabha') {
-    updateFields.minReachTime = minReachTime || '';
-  } else {
-    updateFields.minReachTime = ''; // Clear minReachTime if changed to savar_ni_katha
-  }
+  if (minReachTime !== undefined) updateFields.minReachTime = minReachTime || '';
 
   try {
     let event = await Event.findById(req.params.id);

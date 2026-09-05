@@ -72,7 +72,22 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const apiRequest = async (url, options = {}) => {
+  const apiRequest = async (endpoint, methodOrOptions = 'GET', bodyData = null) => {
+    let url = endpoint;
+    if (!url.startsWith('/api')) {
+      url = `/api${url.startsWith('/') ? '' : '/'}${url}`;
+    }
+
+    let options = {};
+    if (typeof methodOrOptions === 'string') {
+      options = {
+        method: methodOrOptions,
+        ...(bodyData ? { body: JSON.stringify(bodyData) } : {})
+      };
+    } else if (typeof methodOrOptions === 'object' && methodOrOptions !== null) {
+      options = methodOrOptions;
+    }
+
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
