@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, X, FileSpreadsheet, UserPlus, Users, Edit, Trash2 } from 'lucide-react';
 import { SkeletonCard } from '../Loaders';
 import { CATEGORY_LABELS, CATEGORY_TAGS } from '../../constants/sabhaConstants';
+import { sortMembersBySearchRank } from '../../utils/searchRank';
 
 export default function MembersView({
   members,
@@ -15,6 +16,21 @@ export default function MembersView({
   onEditMember,
   onDeleteMember
 }) {
+  const filteredMembers = (members || []).filter(member => {
+    const q = (memberSearch || '').trim().toLowerCase();
+    const matchesSearch = !q ||
+      (member.name && member.name.toLowerCase().includes(q)) ||
+      (member.nameEn && member.nameEn.toLowerCase().includes(q)) ||
+      (member.uniqueCode && member.uniqueCode.toLowerCase().includes(q)) ||
+      (member.mobileNumber && member.mobileNumber.toString().includes(q));
+
+    const matchesType = !memberTypeFilter || memberTypeFilter === 'all' || member.type === memberTypeFilter;
+
+    return matchesSearch && matchesType;
+  });
+
+  const displayList = sortMembersBySearchRank(filteredMembers, memberSearch);
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Controls bar */}
@@ -72,7 +88,7 @@ export default function MembersView({
           <SkeletonCard />
           <SkeletonCard />
         </div>
-      ) : members.length === 0 ? (
+      ) : displayList.length === 0 ? (
         <div className="glass-panel empty-state">
           <div className="empty-state-icon">
             <Users size={28} />
@@ -85,7 +101,7 @@ export default function MembersView({
         </div>
       ) : (
         <div className="grid-3">
-          {[...members].sort((a, b) => a.name.localeCompare(b.name, 'gu')).map(member => (
+          {displayList.map(member => (
             <div key={member._id} className="glass-panel glass-panel-hover" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <div style={{ minWidth: 0 }}>
